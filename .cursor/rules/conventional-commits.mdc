@@ -1,0 +1,47 @@
+---
+description: Enforce Conventional Commits; /commit drafts commit.txt only
+alwaysApply: true
+---
+
+# Conventional Commits
+
+## `/commit` = draft only
+
+When the user runs `/commit`:
+
+1. Analyze the working tree / staged diffs
+2. Follow [`.cursor/templates/conventional-commit.md`](../templates/conventional-commit.md)
+3. Write (overwrite) `commit.txt` at the repo root
+4. **Do not commit** — no `git add`, no `git commit`, no push
+5. **Do not commit `commit.txt`** — leave it untracked for local review
+
+Only create a real git commit when the user explicitly asks afterward
+(e.g. “commit it”, “apply commit.txt”).
+
+## Message rules (when drafting or committing)
+
+1. Format: `type(required-scope): description`
+2. Imperative mood; no trailing period on the subject
+3. Never commit secrets (`.env`, keys, tokens)
+
+## commit.txt format
+
+```text
+Commit summary for current active changes
+
+Proposed message:
+<type>(<scope>): <description>
+
+<required body>
+
+Changes:
+- <bullet summarizing a distinct change>
+- <bullet ...>
+
+Notes:
+- <optional: split commits, skipped files, secrets excluded, etc.>
+```
+
+- Outcome-focused bullets, not a raw file dump
+- Never include secret values
+- Never stage or commit `commit.txt`
