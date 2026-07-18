@@ -1,0 +1,157 @@
+import { PinoLogger } from 'nestjs-pino';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
+import { CreateUrlDto } from './dto/create-url.dto';
+import { generateShortCode } from './utils/short-code';
+import { CreateUrlResponseDto } from './dto/create-utl-response-dto';
+import {
+  URL_CONSTANTS,
+  URL_CREATE_ERROR_MESSAGES,
+  URL_CREATE_LOG_MESSAGES,
+  URL_REDIRECT_ERROR_MESSAGES,
+  URL_REDIRECT_LOG_MESSAGES,
+} from './url.constants';
+
+@Injectable()
+export class UrlsService {
+  private readonly baseUrl: string;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(UrlsService.name);
+    this.baseUrl = this.config.getOrThrow<string>('BASE_URL');
+  }
+
+  private buildShortUrl(shortCode: string): string {
+    return new URL(shortCode, this.baseUrl).toString();
+  }
+
+  async create(dto: CreateUrlDto): Promise<CreateUrlResponseDto> {
+    this.logger.debug(
+      { originalUrl: dto.originalUrl },
+      URL_CREATE_LOG_MESSAGES.CREATE_STARTED,
+    );
+
+    const maxAttempts = URL_CONSTANTS.MAX_SHORT_CODE_ATTEMPTS;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const shortCode = generateShortCode();
+      try {
+        const url = await this.prisma.url.create({
+          data: {
+            originalUrl: dto.originalUrl,
+            shortCode,
+          },
+        });
+
+        const shortUrl = this.buildShortUrl(shortCode);
+
+        this.logger.info(
+          {
+            id: url.id,
+            shortCode,
+            attempt,
+          },
+          'Short URL created',
+        );
+
+        return {
+          originalUrl: url.originalUrl,
+          shortCode,
+          shortUrl,
+        };
+      } catch (error) {
+        if (
+          error instanceof PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          this.logger.warn(
+            {
+              shortCode,
+              attempt,
+            },
+            URL_CREATE_LOG_MESSAGES.COLLISION,
+          );
+          continue;
+        }
+
+        this.logger.error(
+          {
+            err: error,
+            originalUrl: dto.originalUrl,
+          },
+          URL_CREATE_ERROR_MESSAGES.CREATE_FAILED,
+        );
+
+        throw new InternalServerErrorException(
+          URL_CREATE_ERROR_MESSAGES.CREATE_FAILED,
+        );
+      }
+    }
+
+    this.logger.error(
+      {
+        attempts: maxAttempts,
+      },
+      URL_CREATE_ERROR_MESSAGES.UNIQUE_CODE_GENERATION_FAILED,
+    );
+
+    throw new InternalServerErrorException(
+      URL_CREATE_ERROR_MESSAGES.UNIQUE_CODE_GENERATION_FAILED,
+    );
+  }
+
+  async redirect(shortCode: string): Promise<string> {
+    this.logger.debug({ shortCode }, URL_REDIRECT_LOG_MESSAGES.RESOLVING_URL);
+
+    try {
+      const url = await this.prisma.url.findUnique({
+        where: {
+          shortCode,
+        },
+      });
+
+      if (!url) {
+        this.logger.warn(
+          { shortCode },
+          URL_REDIRECT_ERROR_MESSAGES.URL_NOT_FOUND,
+        );
+
+        throw new NotFoundException(URL_REDIRECT_ERROR_MESSAGES.URL_NOT_FOUND);
+      }
+
+      this.logger.info(
+        {
+          id: url.id,
+          shortCode,
+        },
+        URL_REDIRECT_LOG_MESSAGES.REDIRECT_SUCCESS,
+      );
+
+      return url.originalUrl;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      this.logger.error(
+        {
+          err: error,
+          shortCode,
+        },
+        URL_REDIRECT_ERROR_MESSAGES.RESOLVE_FAILED,
+      );
+
+      throw new InternalServerErrorException();
+    }
+  }
+}
