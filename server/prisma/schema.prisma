@@ -15,6 +15,10 @@ model Url {
   id          String   @id @default(cuid())
   originalUrl String
   shortCode   String   @unique
+  strategy    String
   disabled    Boolean  @default(false)
   createdAt   DateTime @default(now())
+
+  @@unique([originalUrl, strategy])
+  @@index([originalUrl])
 }

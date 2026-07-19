@@ -8,7 +8,6 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { CreateUrlDto } from './dto/create-url.dto';
-import { generateShortCode } from './utils/short-code';
 import { CreateUrlResponseDto } from './dto/create-utl-response-dto';
 import {
   URL_CONSTANTS,
@@ -17,6 +16,7 @@ import {
   URL_REDIRECT_ERROR_MESSAGES,
   URL_REDIRECT_LOG_MESSAGES,
 } from './url.constants';
+import { ShortCodeGeneratorService } from '../common/short-code/short-code-generator.service';
 
 @Injectable()
 export class UrlsService {
@@ -25,6 +25,7 @@ export class UrlsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly shortCodeGenerator: ShortCodeGeneratorService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(UrlsService.name);
@@ -35,48 +36,130 @@ export class UrlsService {
     return new URL(shortCode, this.baseUrl).toString();
   }
 
+  private toResponse(
+    originalUrl: string,
+    shortCode: string,
+  ): CreateUrlResponseDto {
+    return {
+      originalUrl,
+      shortCode,
+      shortUrl: this.buildShortUrl(shortCode),
+    };
+  }
+
+  private findByOriginalUrlAndStrategy(
+    originalUrl: string,
+    strategy: string,
+  ) {
+    return this.prisma.url.findFirst({
+      where: {
+        originalUrl,
+        strategy,
+      },
+    });
+  }
+
+  private isUniqueConstraintOn(
+    error: PrismaClientKnownRequestError,
+    fields: string[],
+  ): boolean {
+    const target = error.meta?.target;
+    if (!Array.isArray(target)) {
+      return false;
+    }
+
+    return (
+      fields.length === target.length &&
+      fields.every((field) => target.includes(field))
+    );
+  }
+
   async create(dto: CreateUrlDto): Promise<CreateUrlResponseDto> {
+    const strategy = this.shortCodeGenerator.getStrategy();
+
     this.logger.debug(
-      { originalUrl: dto.originalUrl },
+      { originalUrl: dto.originalUrl, strategy },
       URL_CREATE_LOG_MESSAGES.CREATE_STARTED,
     );
+
+    const existing = await this.findByOriginalUrlAndStrategy(
+      dto.originalUrl,
+      strategy,
+    );
+
+    if (existing) {
+      this.logger.info(
+        {
+          id: existing.id,
+          shortCode: existing.shortCode,
+          strategy,
+        },
+        URL_CREATE_LOG_MESSAGES.REUSED_EXISTING,
+      );
+
+      return this.toResponse(existing.originalUrl, existing.shortCode);
+    }
 
     const maxAttempts = URL_CONSTANTS.MAX_SHORT_CODE_ATTEMPTS;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const shortCode = generateShortCode();
+      const shortCode = await this.shortCodeGenerator.generate({
+        originalUrl: dto.originalUrl,
+        attempt,
+      });
+
       try {
         const url = await this.prisma.url.create({
           data: {
             originalUrl: dto.originalUrl,
             shortCode,
+            strategy,
           },
         });
-
-        const shortUrl = this.buildShortUrl(shortCode);
 
         this.logger.info(
           {
             id: url.id,
             shortCode,
+            strategy,
             attempt,
           },
-          'Short URL created',
+          URL_CREATE_LOG_MESSAGES.CREATE_SUCCESS,
         );
 
-        return {
-          originalUrl: url.originalUrl,
-          shortCode,
-          shortUrl,
-        };
+        return this.toResponse(url.originalUrl, shortCode);
       } catch (error) {
         if (
           error instanceof PrismaClientKnownRequestError &&
           error.code === 'P2002'
         ) {
+          if (this.isUniqueConstraintOn(error, ['originalUrl', 'strategy'])) {
+            const concurrent = await this.findByOriginalUrlAndStrategy(
+              dto.originalUrl,
+              strategy,
+            );
+
+            if (concurrent) {
+              this.logger.info(
+                {
+                  id: concurrent.id,
+                  shortCode: concurrent.shortCode,
+                  strategy,
+                },
+                URL_CREATE_LOG_MESSAGES.REUSED_EXISTING,
+              );
+
+              return this.toResponse(
+                concurrent.originalUrl,
+                concurrent.shortCode,
+              );
+            }
+          }
+
           this.logger.warn(
             {
               shortCode,
+              strategy,
               attempt,
             },
             URL_CREATE_LOG_MESSAGES.COLLISION,
@@ -88,6 +171,7 @@ export class UrlsService {
           {
             err: error,
             originalUrl: dto.originalUrl,
+            strategy,
           },
           URL_CREATE_ERROR_MESSAGES.CREATE_FAILED,
         );
@@ -101,6 +185,7 @@ export class UrlsService {
     this.logger.error(
       {
         attempts: maxAttempts,
+        strategy,
       },
       URL_CREATE_ERROR_MESSAGES.UNIQUE_CODE_GENERATION_FAILED,
     );
@@ -120,7 +205,7 @@ export class UrlsService {
         },
       });
 
-      if (!url) {
+      if (!url || url.disabled) {
         this.logger.warn(
           { shortCode },
           URL_REDIRECT_ERROR_MESSAGES.URL_NOT_FOUND,

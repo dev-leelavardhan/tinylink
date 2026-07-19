@@ -26,6 +26,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "hashids": "^2.3.0",
     "nestjs-pino": "^4.6.1",
     "pg": "^8.22.0",
     "pino": "^10.3.1",
