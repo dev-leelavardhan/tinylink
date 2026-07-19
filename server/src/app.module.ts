@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { LoggerModule } from 'nestjs-pino';
 import { pinoConfig } from './logger/pino.config';
 import { HealthModule } from './health/health.module';
+import { UrlsModule } from './urls/urls.module';
 
 @Module({
   imports: [
@@ -20,6 +21,9 @@ import { HealthModule } from './health/health.module';
 
     //health
     HealthModule,
+
+    //urls modules
+    UrlsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
