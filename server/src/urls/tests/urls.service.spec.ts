@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UrlsService } from '../urls.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { UrlsService } from '../service/urls.service';
 
 describe('UrlsService', () => {
   let service: UrlsService;
@@ -14,5 +15,21 @@ describe('UrlsService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('should allow querying Url records without schema mismatch errors', async () => {
+    const prisma = new PrismaService();
+
+    await prisma.onModuleInit();
+
+    try {
+      const result = await prisma.url.findFirst({
+        where: { shortCode: 'does-not-exist' },
+      });
+
+      expect(result).toBeNull();
+    } finally {
+      await prisma.onModuleDestroy();
+    }
   });
 });
