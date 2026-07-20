@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { ShortCodeGenerator } from '../interfaces/short-code-generator.interface';
+import {
+  ShortCodeGenerateOptions,
+  ShortCodeGenerator,
+} from '../interfaces/short-code-generator.interface';
 import {
   SHORT_CODE_CONFIG_KEYS,
   SNOWFLAKE_EPOCH_MS,
@@ -32,7 +35,8 @@ export class SnowflakeGenerator implements ShortCodeGenerator {
     this.workerId = workerId;
   }
 
-  generate(): string {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  generate(options?: ShortCodeGenerateOptions): string {
     const id = this.nextId();
     return encodeBase62(id);
   }

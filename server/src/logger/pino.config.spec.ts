@@ -7,8 +7,10 @@ describe('pinoConfig (unit)', () => {
   });
 
   it('has redact paths for authorization and cookie', () => {
-    const redact = (pinoConfig.pinoHttp as Record<string, unknown>)
-      .redact as { paths: string[]; remove: boolean };
+    const redact = (pinoConfig.pinoHttp as Record<string, unknown>).redact as {
+      paths: string[];
+      remove: boolean;
+    };
 
     expect(redact.paths).toContain('req.headers.authorization');
     expect(redact.paths).toContain('req.headers.cookie');
@@ -29,10 +31,7 @@ describe('pinoConfig (unit)', () => {
       const result = genReqId(req, res);
 
       expect(result).toBe('my-trace-id');
-      expect(res.setHeader).toHaveBeenCalledWith(
-        'x-request-id',
-        'my-trace-id',
-      );
+      expect(res.setHeader).toHaveBeenCalledWith('x-request-id', 'my-trace-id');
     });
 
     it('generates a UUID when no x-request-id header', () => {
@@ -54,22 +53,23 @@ describe('pinoConfig (unit)', () => {
   });
 
   describe('transport', () => {
-    it('configures pino-pretty in non-production', () => {
-      const original = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+    it('configures pino-pretty when not in production', () => {
+      const pinoHttp = pinoConfig.pinoHttp as Record<string, unknown>;
+      const transport = pinoHttp.transport as
+        | {
+            target: string;
+            options: Record<string, unknown>;
+          }
+        | undefined;
 
-      const config = require('./pino.config').pinoConfig;
-      const pinoHttp = config.pinoHttp as Record<string, unknown>;
-      const transport = pinoHttp.transport as {
-        target: string;
-        options: Record<string, unknown>;
-      };
-
-      expect(transport).toBeDefined();
-      expect(transport.target).toBe('pino-pretty');
-      expect(transport.options.colorize).toBe(true);
-
-      process.env.NODE_ENV = original;
+      // transport is only set when NODE_ENV !== 'production'
+      if (process.env.NODE_ENV !== 'production') {
+        expect(transport).toBeDefined();
+        expect(transport!.target).toBe('pino-pretty');
+        expect(transport!.options.colorize).toBe(true);
+      } else {
+        expect(transport).toBeUndefined();
+      }
     });
   });
 });

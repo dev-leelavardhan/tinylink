@@ -19,12 +19,11 @@ describe('HashidsGenerator (unit)', () => {
           provide: ConfigService,
           useValue: {
             getOrThrow: jest.fn((key: string) => {
-              if (key === 'SHORT_CODE_HASHIDS_SALT') return 'test-salt-value-1234';
+              if (key === 'SHORT_CODE_HASHIDS_SALT')
+                return 'test-salt-value-1234';
               return undefined;
             }),
-            get: jest.fn(
-              (key: string, defaultValue?: unknown) => defaultValue,
-            ),
+            get: jest.fn((key: string, defaultValue?: unknown) => defaultValue),
           },
         },
         { provide: ShortCodeCounterService, useValue: counter },
@@ -35,7 +34,9 @@ describe('HashidsGenerator (unit)', () => {
   });
 
   it('generates a code from a counter value', async () => {
-    const code = await generator.generate({ originalUrl: 'https://example.com' });
+    const code = await generator.generate({
+      originalUrl: 'https://example.com',
+    });
 
     expect(typeof code).toBe('string');
     expect(code.length).toBeGreaterThan(0);

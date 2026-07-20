@@ -2,10 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 
 import { HashGenerator } from './hash.generator';
-import {
-  RANDOM_BASE_CONSTANTS,
-  SHORT_CODE_CONFIG_KEYS,
-} from '../short-code.constants';
+import { RANDOM_BASE_CONSTANTS } from '../short-code.constants';
 
 describe('HashGenerator (unit)', () => {
   let generator: HashGenerator;
@@ -17,9 +14,7 @@ describe('HashGenerator (unit)', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn(
-              (key: string, defaultValue?: unknown) => defaultValue,
-            ),
+            get: jest.fn((key: string, defaultValue?: unknown) => defaultValue),
           },
         },
       ],
@@ -58,8 +53,14 @@ describe('HashGenerator (unit)', () => {
   });
 
   it('changes output with different attempt values', () => {
-    const first = generator.generate({ originalUrl: 'https://example.com', attempt: 1 });
-    const second = generator.generate({ originalUrl: 'https://example.com', attempt: 2 });
+    const first = generator.generate({
+      originalUrl: 'https://example.com',
+      attempt: 1,
+    });
+    const second = generator.generate({
+      originalUrl: 'https://example.com',
+      attempt: 2,
+    });
 
     expect(first).not.toBe(second);
   });

@@ -23,7 +23,9 @@ describe('AutoIncrementGenerator (unit)', () => {
   it('generates a base62 code from counter value', async () => {
     counter.next.mockResolvedValue(1n);
 
-    const code = await generator.generate({ originalUrl: 'https://example.com' });
+    const code = await generator.generate({
+      originalUrl: 'https://example.com',
+    });
 
     expect(code).toBe('1');
     expect(counter.next).toHaveBeenCalledTimes(1);
@@ -32,7 +34,9 @@ describe('AutoIncrementGenerator (unit)', () => {
   it('generates correct base62 for larger counter values', async () => {
     counter.next.mockResolvedValue(62n);
 
-    const code = await generator.generate({ originalUrl: 'https://example.com' });
+    const code = await generator.generate({
+      originalUrl: 'https://example.com',
+    });
 
     expect(code).toBe('10');
   });

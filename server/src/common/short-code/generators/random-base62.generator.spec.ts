@@ -14,9 +14,7 @@ describe('RandomBase62Generator (unit)', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn(
-              (key: string, defaultValue?: unknown) => defaultValue,
-            ),
+            get: jest.fn((key: string, defaultValue?: unknown) => defaultValue),
           },
         },
       ],

@@ -23,14 +23,15 @@ describe('ShortCodeCounterService (unit)', () => {
   });
 
   it('creates the sequence on module init', async () => {
-    (prisma as { $executeRawUnsafe: jest.Mock }).$executeRawUnsafe =
-      jest.fn().mockResolvedValue(undefined);
+    (prisma as { $executeRawUnsafe: jest.Mock }).$executeRawUnsafe = jest
+      .fn()
+      .mockResolvedValue(undefined);
 
     await service.onModuleInit();
 
-    expect((prisma as { $executeRawUnsafe: jest.Mock }).$executeRawUnsafe).toHaveBeenCalledWith(
-      expect.stringContaining(SHORT_CODE_SEQUENCE),
-    );
+    expect(
+      (prisma as { $executeRawUnsafe: jest.Mock }).$executeRawUnsafe,
+    ).toHaveBeenCalledWith(expect.stringContaining(SHORT_CODE_SEQUENCE));
   });
 
   it('returns the next sequence value', async () => {

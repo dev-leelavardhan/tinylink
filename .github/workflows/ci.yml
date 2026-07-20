@@ -92,7 +92,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm prisma:generate
       - run: pnpm prisma migrate deploy
-      - run: pnpm test:unit
+      - run: pnpm test
 
   prisma-generate:
     name: Prisma Generate

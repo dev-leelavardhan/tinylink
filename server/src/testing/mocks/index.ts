@@ -8,6 +8,8 @@ export type PrismaMock = {
     create: jest.Mock;
   };
   $queryRaw: jest.Mock;
+  $queryRawUnsafe: jest.Mock;
+  $executeRawUnsafe: jest.Mock;
   $connect: jest.Mock;
   $disconnect: jest.Mock;
 };
@@ -19,6 +21,8 @@ export function createPrismaMock(): PrismaMock {
       create: jest.fn(),
     },
     $queryRaw: jest.fn(),
+    $queryRawUnsafe: jest.fn(),
+    $executeRawUnsafe: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };

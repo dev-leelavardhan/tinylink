@@ -156,14 +156,12 @@ describe('UrlsService (unit)', () => {
     });
 
     it('returns existing URL when concurrent P2002 on originalUrl+strategy', async () => {
-      prisma.url.findFirst
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          id: 'concurrent-1',
-          originalUrl: 'https://example.com/concurrent',
-          shortCode: 'concur1',
-          strategy: 'random',
-        });
+      prisma.url.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
+        id: 'concurrent-1',
+        originalUrl: 'https://example.com/concurrent',
+        shortCode: 'concur1',
+        strategy: 'random',
+      });
 
       const uniqueError = new PrismaClientKnownRequestError(
         'Unique constraint failed',

@@ -13,9 +13,7 @@ describe('SnowflakeGenerator (unit)', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn(
-              (key: string, defaultValue?: unknown) => defaultValue,
-            ),
+            get: jest.fn((key: string, defaultValue?: unknown) => defaultValue),
           },
         },
       ],

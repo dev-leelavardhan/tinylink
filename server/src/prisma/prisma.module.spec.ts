@@ -23,7 +23,9 @@ describe('PrismaModule (unit)', () => {
   });
 
   it('exports PrismaService', () => {
-    const exports = Reflect.getMetadata('exports', PrismaModule) || [];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const exports: unknown[] =
+      Reflect.getMetadata('exports', PrismaModule) || [];
     expect(exports).toContain(PrismaService);
   });
 });

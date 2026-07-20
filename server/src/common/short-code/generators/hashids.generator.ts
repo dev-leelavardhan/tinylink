@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Hashids from 'hashids';
 
-import { ShortCodeGenerator } from '../interfaces/short-code-generator.interface';
+import {
+  ShortCodeGenerateOptions,
+  ShortCodeGenerator,
+} from '../interfaces/short-code-generator.interface';
 import { ShortCodeCounterService } from '../short-code-counter.service';
 import {
   RANDOM_BASE_CONSTANTS,
@@ -18,7 +21,8 @@ export class HashidsGenerator implements ShortCodeGenerator {
     private readonly counter: ShortCodeCounterService,
   ) {}
 
-  async generate(): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async generate(options?: ShortCodeGenerateOptions): Promise<string> {
     const id = await this.counter.next();
     return this.getHashids().encode(id);
   }

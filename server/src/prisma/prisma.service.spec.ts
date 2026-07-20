@@ -12,7 +12,8 @@ describe('PrismaService (unit)', () => {
   it('onModuleInit calls $connect', async () => {
     const instance = Object.create(PrismaService.prototype) as PrismaService;
     const connectSpy = jest.fn().mockResolvedValue(undefined);
-    (instance as Record<string, unknown>).$connect = connectSpy;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    (instance as any).$connect = connectSpy;
 
     await instance.onModuleInit();
 
@@ -22,7 +23,8 @@ describe('PrismaService (unit)', () => {
   it('onModuleDestroy calls $disconnect', async () => {
     const instance = Object.create(PrismaService.prototype) as PrismaService;
     const disconnectSpy = jest.fn().mockResolvedValue(undefined);
-    (instance as Record<string, unknown>).$disconnect = disconnectSpy;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    (instance as any).$disconnect = disconnectSpy;
 
     await instance.onModuleDestroy();
 

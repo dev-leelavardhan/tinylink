@@ -13,10 +13,7 @@ describe('HealthService (unit)', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        HealthService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [HealthService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get(HealthService);
