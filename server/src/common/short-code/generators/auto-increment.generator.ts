@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 
-import { ShortCodeGenerator } from '../interfaces/short-code-generator.interface';
+import {
+  ShortCodeGenerateOptions,
+  ShortCodeGenerator,
+} from '../interfaces/short-code-generator.interface';
 import { ShortCodeCounterService } from '../short-code-counter.service';
 import { encodeBase62 } from '../utils/base62';
 
@@ -8,7 +11,8 @@ import { encodeBase62 } from '../utils/base62';
 export class AutoIncrementGenerator implements ShortCodeGenerator {
   constructor(private readonly counter: ShortCodeCounterService) {}
 
-  async generate(): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async generate(options?: ShortCodeGenerateOptions): Promise<string> {
     const id = await this.counter.next();
     return encodeBase62(id);
   }

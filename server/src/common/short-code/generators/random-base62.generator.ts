@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { randomInt } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 
-import { ShortCodeGenerator } from '../interfaces/short-code-generator.interface';
+import {
+  ShortCodeGenerateOptions,
+  ShortCodeGenerator,
+} from '../interfaces/short-code-generator.interface';
 import {
   RANDOM_BASE_CONSTANTS,
   SHORT_CODE_CONFIG_KEYS,
@@ -19,7 +22,8 @@ export class RandomBase62Generator implements ShortCodeGenerator {
     );
   }
 
-  generate(): string {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  generate(options?: ShortCodeGenerateOptions): string {
     const { RANDOM_BASE, RANDOM_BASE_LENGTH } = RANDOM_BASE_CONSTANTS;
     let code = '';
 

@@ -47,14 +47,25 @@ $ pnpm run start:prod
 ## Run tests
 
 ```bash
-# unit tests
-$ pnpm run test
+# unit tests (no database required)
+$ pnpm run test:unit
 
-# e2e tests
+# integration tests (requires test Postgres)
+$ cp .env.test.example .env.test
+$ pnpm run test:db:up
+$ pnpm run test:integration
+
+# e2e tests (requires test Postgres)
 $ pnpm run test:e2e
 
-# test coverage
+# all test suites
+$ pnpm run test:all
+
+# test coverage (unit tests)
 $ pnpm run test:cov
+
+# stop test database
+$ pnpm run test:db:down
 ```
 
 ## Deployment

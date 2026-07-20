@@ -1,6 +1,15 @@
-import { Injectable, BadRequestException, ConflictException } from "@nestjs/common";
-import { PrismaService } from "../../prisma/prisma.service";
-import { MIN_ALIAS_LENGTH, MAX_ALIAS_LENGTH, ALIAS_REGEX, RESERVED_ALIASES } from "../constants/alias.costants";
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import {
+  MIN_ALIAS_LENGTH,
+  MAX_ALIAS_LENGTH,
+  ALIAS_REGEX,
+  RESERVED_ALIASES,
+} from '../constants/alias.costants';
 
 @Injectable()
 export class AliasValidatorService {
