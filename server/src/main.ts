@@ -14,4 +14,7 @@ async function bootstrap() {
   app.get(Logger).log(`TinyLink API started on port ${port}`);
 }
 
-bootstrap();
+bootstrap().catch((error: unknown) => {
+  console.error('Failed to start TinyLink API', error);
+  process.exit(1);
+});
