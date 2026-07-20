@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  MAX_ALIAS_LENGTH,
+  MIN_ALIAS_LENGTH,
+} from '../constants/alias.costants';
 
 export const createUrlSchema = z.object({
   originalUrl: z
@@ -7,6 +11,19 @@ export const createUrlSchema = z.object({
       (url) => url.startsWith('http://') || url.startsWith('https://'),
       'URL must use HTTP or HTTPS',
     ),
+  customAlias: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(MIN_ALIAS_LENGTH)
+    .max(MAX_ALIAS_LENGTH)
+    .optional(),
+  expiresAt: z.coerce
+    .date()
+    .refine((date) => date > new Date(), {
+      error: 'Expiration date must be in the future',
+    })
+    .optional(),
 });
 
 export type CreateUrlDto = z.infer<typeof createUrlSchema>;

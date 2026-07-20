@@ -21,5 +21,7 @@ export const URL_REDIRECT_LOG_MESSAGES = {
 
 export const URL_REDIRECT_ERROR_MESSAGES = {
   URL_NOT_FOUND: 'Short URL not found',
+  URL_DISABLED: 'URL has been disabled',
+  URL_EXPIRED: 'URL has expired',
   RESOLVE_FAILED: 'Failed to resolve short URL',
 } as const;

@@ -1,22 +1,24 @@
 import { PinoLogger } from 'nestjs-pino';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import {
+  GoneException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { CreateUrlDto } from './dto/create-url.dto';
-import { CreateUrlResponseDto } from './dto/create-utl-response-dto';
+import { CreateUrlDto } from '../dto/create-url.dto';
+import { CreateUrlResponseDto } from '../dto/create-utl-response-dto';
 import {
   URL_CONSTANTS,
   URL_CREATE_ERROR_MESSAGES,
   URL_CREATE_LOG_MESSAGES,
   URL_REDIRECT_ERROR_MESSAGES,
   URL_REDIRECT_LOG_MESSAGES,
-} from './url.constants';
-import { ShortCodeGeneratorService } from '../common/short-code/short-code-generator.service';
+} from '../constants/url.constants';
+import { ShortCodeGeneratorService } from '../../common/short-code/short-code-generator.service';
+import { AliasValidatorService } from './alias-validator.service';
 
 @Injectable()
 export class UrlsService {
@@ -26,6 +28,7 @@ export class UrlsService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly shortCodeGenerator: ShortCodeGeneratorService,
+    private readonly aliasValidator: AliasValidatorService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(UrlsService.name);
@@ -47,10 +50,7 @@ export class UrlsService {
     };
   }
 
-  private findByOriginalUrlAndStrategy(
-    originalUrl: string,
-    strategy: string,
-  ) {
+  private findByOriginalUrlAndStrategy(originalUrl: string, strategy: string) {
     return this.prisma.url.findFirst({
       where: {
         originalUrl,
@@ -82,6 +82,12 @@ export class UrlsService {
       URL_CREATE_LOG_MESSAGES.CREATE_STARTED,
     );
 
+    const alias = dto.customAlias?.trim().toLowerCase();
+
+    if (alias) {
+      await this.aliasValidator.validate(alias);
+    }
+
     const existing = await this.findByOriginalUrlAndStrategy(
       dto.originalUrl,
       strategy,
@@ -103,16 +109,20 @@ export class UrlsService {
     const maxAttempts = URL_CONSTANTS.MAX_SHORT_CODE_ATTEMPTS;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const shortCode = await this.shortCodeGenerator.generate({
-        originalUrl: dto.originalUrl,
-        attempt,
-      });
+      const shortCode =
+        alias ??
+        (await this.shortCodeGenerator.generate({
+          originalUrl: dto.originalUrl,
+          attempt,
+        }));
 
       try {
         const url = await this.prisma.url.create({
           data: {
             originalUrl: dto.originalUrl,
             shortCode,
+            customAlias: alias,
+            expiresAt: dto.expiresAt,
             strategy,
           },
         });
@@ -199,19 +209,35 @@ export class UrlsService {
     this.logger.debug({ shortCode }, URL_REDIRECT_LOG_MESSAGES.RESOLVING_URL);
 
     try {
-      const url = await this.prisma.url.findUnique({
+      const url = await this.prisma.url.findFirst({
         where: {
-          shortCode,
+          OR: [{ shortCode }, { customAlias: shortCode }],
         },
       });
 
-      if (!url || url.disabled) {
+      if (!url) {
         this.logger.warn(
           { shortCode },
           URL_REDIRECT_ERROR_MESSAGES.URL_NOT_FOUND,
         );
 
         throw new NotFoundException(URL_REDIRECT_ERROR_MESSAGES.URL_NOT_FOUND);
+      }
+
+      if (url.disabled) {
+        this.logger.warn(
+          { id: url.id, shortCode },
+          URL_REDIRECT_ERROR_MESSAGES.URL_DISABLED,
+        );
+        throw new GoneException(URL_REDIRECT_ERROR_MESSAGES.URL_DISABLED);
+      }
+
+      if (url.expiresAt && url.expiresAt <= new Date()) {
+        this.logger.warn(
+          { id: url.id, shortCode, expiresAt: url.expiresAt },
+          URL_REDIRECT_ERROR_MESSAGES.URL_EXPIRED,
+        );
+        throw new GoneException(URL_REDIRECT_ERROR_MESSAGES.URL_EXPIRED);
       }
 
       this.logger.info(

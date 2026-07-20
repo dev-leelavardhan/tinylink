@@ -12,13 +12,29 @@ datasource db {
 }
 
 model Url {
-  id          String   @id @default(cuid())
-  originalUrl String
-  shortCode   String   @unique
-  strategy    String
-  disabled    Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id             String   @id @default(cuid())
+
+  originalUrl    String
+
+  shortCode      String   @unique
+
+  customAlias    String?  @unique
+
+  strategy       String
+
+  expiresAt      DateTime?
+
+  disabled       Boolean  @default(false)
+
+  lastAccessedAt DateTime?
+
+  deletedAt      DateTime?
+
+  createdAt      DateTime  @default(now())
+
+  updatedAt      DateTime  @updatedAt
 
   @@unique([originalUrl, strategy])
-  @@index([originalUrl])
+  @@index([expiresAt])
+  @@index([disabled])
 }
