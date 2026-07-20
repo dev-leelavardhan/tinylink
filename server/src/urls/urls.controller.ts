@@ -9,7 +9,7 @@ import {
   Redirect,
 } from '@nestjs/common';
 import { type CreateUrlDto, createUrlSchema } from './dto/create-url.dto';
-import { UrlsService } from './urls.service';
+import { UrlsService } from './service/urls.service';
 import { ZodValidationPipe } from '../zod/common.validation';
 import { CreateUrlResponseDto } from './dto/create-utl-response-dto';
 
