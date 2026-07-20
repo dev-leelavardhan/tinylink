@@ -41,7 +41,9 @@ export class SnowflakeGenerator implements ShortCodeGenerator {
     let timestamp = this.currentTimestamp();
 
     if (timestamp < this.lastTimestamp) {
-      throw new Error('Clock moved backwards; refusing to generate snowflake id');
+      throw new Error(
+        'Clock moved backwards; refusing to generate snowflake id',
+      );
     }
 
     if (timestamp === this.lastTimestamp) {

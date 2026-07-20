@@ -138,7 +138,7 @@ export class UrlsService {
         );
 
         return this.toResponse(url.originalUrl, shortCode);
-      } catch (error) {
+      } catch (error: unknown) {
         if (
           error instanceof PrismaClientKnownRequestError &&
           error.code === 'P2002'
@@ -249,8 +249,11 @@ export class UrlsService {
       );
 
       return url.originalUrl;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
+    } catch (error: unknown) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof GoneException
+      ) {
         throw error;
       }
 
