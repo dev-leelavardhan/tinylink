@@ -41,7 +41,7 @@ describe('HealthController (e2e)', () => {
     return request(app.getHttpServer() as Server)
       .get('/health')
       .expect(200)
-      .expect({ status: 'ok', db: 'up' });
+      .expect({ status: 'ok', db: 'up', redis: 'up' });
   });
 });
 
