@@ -10,10 +10,7 @@ describe('UrlMapper', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UrlMapper,
-        { provide: ConfigService, useValue: config },
-      ],
+      providers: [UrlMapper, { provide: ConfigService, useValue: config }],
     }).compile();
 
     mapper = module.get(UrlMapper);

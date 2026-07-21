@@ -45,7 +45,7 @@ describe('UrlRedirectService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    mapper.toCached.mockImplementation((url) => ({
+    mapper.toCached.mockImplementation((url: Url) => ({
       id: url.id,
       originalUrl: url.originalUrl,
       shortCode: url.shortCode,
@@ -147,7 +147,9 @@ describe('UrlRedirectService', () => {
       cache.get.mockResolvedValue(null);
       repository.findByShortCodeOrAlias.mockResolvedValue(null);
 
-      await expect(service.redirect('missing')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.redirect('missing')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
       expect(cache.setNegative).toHaveBeenCalledWith('missing');
     });
 
@@ -166,7 +168,9 @@ describe('UrlRedirectService', () => {
         throw new GoneException('URL disabled');
       });
 
-      await expect(service.redirect('off')).rejects.toBeInstanceOf(GoneException);
+      await expect(service.redirect('off')).rejects.toBeInstanceOf(
+        GoneException,
+      );
     });
 
     it('throws GoneException when URL is expired', async () => {
@@ -184,13 +188,17 @@ describe('UrlRedirectService', () => {
         throw new GoneException('URL expired');
       });
 
-      await expect(service.redirect('old')).rejects.toBeInstanceOf(GoneException);
+      await expect(service.redirect('old')).rejects.toBeInstanceOf(
+        GoneException,
+      );
     });
 
     it('wraps unexpected errors as InternalServerErrorException', async () => {
       cache.get.mockRejectedValue(new Error('redis down'));
 
-      await expect(service.redirect('broken')).rejects.toBeInstanceOf(InternalServerErrorException);
+      await expect(service.redirect('broken')).rejects.toBeInstanceOf(
+        InternalServerErrorException,
+      );
     });
 
     it('re-throws NotFoundException from cache hit validation', async () => {
@@ -208,7 +216,9 @@ describe('UrlRedirectService', () => {
         throw new NotFoundException('not found');
       });
 
-      await expect(service.redirect('gone')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.redirect('gone')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 });

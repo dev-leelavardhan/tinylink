@@ -6,8 +6,6 @@ import { CreateUrlDto } from '../dto/create-url.dto';
 
 describe('UrlsService (unit)', () => {
   let service: UrlsService;
-  let creator: UrlCreateService;
-  let redirector: UrlRedirectService;
 
   const mockCreator = {
     create: jest.fn(),
@@ -29,15 +27,17 @@ describe('UrlsService (unit)', () => {
     }).compile();
 
     service = module.get(UrlsService);
-    creator = module.get(UrlCreateService);
-    redirector = module.get(UrlRedirectService);
   });
 
   describe('create', () => {
     it('delegates to UrlCreateService', async () => {
       const dto: CreateUrlDto = { originalUrl: 'https://example.com' };
-      const expectedResult = { shortCode: 'abc1234', originalUrl: 'https://example.com', shortUrl: 'http://localhost:3000/abc1234' };
-      
+      const expectedResult = {
+        shortCode: 'abc1234',
+        originalUrl: 'https://example.com',
+        shortUrl: 'http://localhost:3000/abc1234',
+      };
+
       mockCreator.create.mockResolvedValue(expectedResult);
 
       const result = await service.create(dto);
@@ -51,7 +51,7 @@ describe('UrlsService (unit)', () => {
     it('delegates to UrlRedirectService', async () => {
       const shortCode = 'abc1234';
       const expectedUrl = 'https://example.com';
-      
+
       mockRedirector.redirect.mockResolvedValue(expectedUrl);
 
       const result = await service.redirect(shortCode);

@@ -20,7 +20,10 @@ describe('RedisService (unit)', () => {
     await instance.onModuleInit();
 
     expect(connectSpy).toHaveBeenCalled();
-    expect((instance as any).logger.log).toHaveBeenCalledWith('Redis connected');
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    expect((instance as any).logger.log).toHaveBeenCalledWith(
+      'Redis connected',
+    );
   });
 
   it('onModuleInit throws and logs error on connection failure', async () => {
@@ -33,7 +36,11 @@ describe('RedisService (unit)', () => {
     (instance as any).logger = { log: jest.fn(), error: jest.fn() };
 
     await expect(instance.onModuleInit()).rejects.toThrow('connection refused');
-    expect((instance as any).logger.error).toHaveBeenCalledWith('Redis connection failed', error);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    expect((instance as any).logger.error).toHaveBeenCalledWith(
+      'Redis connection failed',
+      error,
+    );
   });
 
   it('onModuleDestroy calls quit', async () => {

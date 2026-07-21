@@ -23,10 +23,7 @@ describe('UrlCacheService', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UrlCacheService,
-        { provide: RedisService, useValue: redis },
-      ],
+      providers: [UrlCacheService, { provide: RedisService, useValue: redis }],
     }).compile();
 
     service = module.get(UrlCacheService);

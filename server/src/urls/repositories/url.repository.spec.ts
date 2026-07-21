@@ -11,10 +11,7 @@ describe('UrlRepository', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UrlRepository,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [UrlRepository, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     repository = module.get(UrlRepository);
@@ -65,7 +62,11 @@ describe('UrlRepository', () => {
 
   describe('findByOriginalUrlAndStrategy', () => {
     it('finds a URL by originalUrl and strategy', async () => {
-      const url = { id: '1', originalUrl: 'https://example.com', strategy: 'random' };
+      const url = {
+        id: '1',
+        originalUrl: 'https://example.com',
+        strategy: 'random',
+      };
       prisma.url.findFirst.mockResolvedValue(url);
 
       const result = await repository.findByOriginalUrlAndStrategy(

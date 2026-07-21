@@ -17,7 +17,9 @@ describe('isUniqueConstraintOn', () => {
 
   it('returns false when target has different fields', () => {
     const error = makeError(['shortCode']);
-    expect(isUniqueConstraintOn(error, ['originalUrl', 'strategy'])).toBe(false);
+    expect(isUniqueConstraintOn(error, ['originalUrl', 'strategy'])).toBe(
+      false,
+    );
   });
 
   it('returns false when target is not an array', () => {
