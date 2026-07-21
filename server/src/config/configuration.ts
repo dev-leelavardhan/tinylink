@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { envSchema } from './env.schema';
 
-export default () => {
+const configuration = () => {
   const result = envSchema.safeParse(process.env);
 
   if (!result.success) {
@@ -12,3 +12,5 @@ export default () => {
 
   return result.data;
 };
+
+export default configuration;

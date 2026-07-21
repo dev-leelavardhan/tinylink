@@ -22,6 +22,7 @@
     "test:integration": "jest --config ./test/jest-integration.json --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "test:all": "pnpm test && pnpm test:integration && pnpm test:e2e",
+    "check": "node scripts/check.js",
     "test:db:up": "docker compose -f docker-compose.test.yml up -d --wait",
     "test:db:down": "docker compose -f docker-compose.test.yml down -v",
     "prisma:generate": "prisma generate"
