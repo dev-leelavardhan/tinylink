@@ -5,6 +5,7 @@ import { LoggerModule } from 'nestjs-pino';
 import configuration from '../../src/config/configuration';
 import { PrismaModule } from '../../src/prisma/prisma.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
+import { RedisModule } from '../../src/redis/redis.module';
 import { ShortCodeModule } from '../../src/common/short-code/short-code.module';
 import { UrlsModule } from '../../src/urls/urls.module';
 import { UrlsService } from '../../src/urls/service/urls.service';
@@ -25,6 +26,7 @@ describe('UrlsService (integration)', () => {
         }),
         LoggerModule.forRoot({ pinoHttp: { level: 'silent' } }),
         PrismaModule,
+        RedisModule,
         ShortCodeModule,
         UrlsModule,
       ],

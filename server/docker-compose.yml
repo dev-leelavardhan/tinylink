@@ -2,9 +2,9 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: tinylink
-      POSTGRES_PASSWORD: tinylink
-      POSTGRES_DB: tinylink
+      POSTGRES_USER: ${POSTGRES_USER:-tinylink}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tinylink}
+      POSTGRES_DB: ${POSTGRES_DB:-tinylink}
     ports: ['5432:5432']
     volumes: ['pgdata:/var/lib/postgresql/data']
   redis:

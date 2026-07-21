@@ -28,12 +28,10 @@ export class HashGenerator implements ShortCodeGenerator {
     const digest = createHash('sha256').update(payload).digest();
 
     const { RANDOM_BASE, RANDOM_BASE_LENGTH } = RANDOM_BASE_CONSTANTS;
-    let code = '';
 
-    for (let i = 0; i < this.length; i++) {
-      code += RANDOM_BASE[digest[i] % RANDOM_BASE_LENGTH];
-    }
-
-    return code;
+    return Array.from(
+      { length: this.length },
+      (_, i) => RANDOM_BASE[digest[i] % RANDOM_BASE_LENGTH],
+    ).join('');
   }
 }
