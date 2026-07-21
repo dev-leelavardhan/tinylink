@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { createPrismaMock } from '../../testing/mocks';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AliasValidatorService } from '../service/alias-validator.service';
+import { AliasValidatorService } from '../validators/alias-validator.service';
 
 describe('AliasValidatorService (unit)', () => {
   let service: AliasValidatorService;

@@ -5,9 +5,15 @@ import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisModule } from '../redis/redis.module';
+import { RedisService } from '../redis/redis.service';
 
 const prismaMock = {
   $queryRaw: jest.fn(),
+};
+
+const redisMock = {
+  ping: jest.fn().mockResolvedValue('PONG'),
 };
 
 describe('HealthModule (unit)', () => {
@@ -15,10 +21,12 @@ describe('HealthModule (unit)', () => {
 
   beforeEach(async () => {
     module = await Test.createTestingModule({
-      imports: [HealthModule, PrismaModule],
+      imports: [HealthModule, PrismaModule, RedisModule],
     })
       .overrideProvider(PrismaService)
       .useValue(prismaMock)
+      .overrideProvider(RedisService)
+      .useValue(redisMock)
       .compile();
   });
 

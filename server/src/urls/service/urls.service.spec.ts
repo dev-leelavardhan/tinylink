@@ -15,8 +15,8 @@ import {
   createPrismaMock,
 } from '../../testing/mocks';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AliasValidatorService } from '../service/alias-validator.service';
-import { UrlsService } from '../service/urls.service';
+import { UrlsService } from './urls.service';
+import { AliasValidatorService } from '../validators/alias-validator.service';
 
 describe('UrlsService (unit)', () => {
   let service: UrlsService;
