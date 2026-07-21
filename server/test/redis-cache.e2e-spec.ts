@@ -53,7 +53,10 @@ describe('Redis Cache (e2e)', () => {
       const afterCreate = await redis.get(redisKey);
       expect(afterCreate).not.toBeNull();
 
-      const cached = JSON.parse(afterCreate!);
+      const cached = JSON.parse(afterCreate!) as {
+        originalUrl: string;
+        shortCode: string;
+      };
       expect(cached.originalUrl).toBe('https://cache-test.example.com');
       expect(cached.shortCode).toBe(body.shortCode);
     });
