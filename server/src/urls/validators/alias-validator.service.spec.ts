@@ -1,21 +1,21 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { createPrismaMock } from '../../testing/mocks';
-import { PrismaService } from '../../prisma/prisma.service';
-import { AliasValidatorService } from '../service/alias-validator.service';
+import { AliasValidatorService } from './alias-validator.service';
+import { UrlRepository } from '../repositories/url.repository';
 
 describe('AliasValidatorService (unit)', () => {
   let service: AliasValidatorService;
-  const prisma = createPrismaMock();
+  let repository: { findByAlias: jest.Mock };
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    repository = { findByAlias: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AliasValidatorService,
-        { provide: PrismaService, useValue: prisma },
+        { provide: UrlRepository, useValue: repository },
       ],
     }).compile();
 
@@ -47,7 +47,7 @@ describe('AliasValidatorService (unit)', () => {
   });
 
   it('rejects aliases that already exist', async () => {
-    prisma.url.findFirst.mockResolvedValue({ id: 'existing' });
+    repository.findByAlias.mockResolvedValue({ id: 'existing' });
 
     await expect(service.validate('taken-alias')).rejects.toBeInstanceOf(
       ConflictException,
@@ -55,8 +55,8 @@ describe('AliasValidatorService (unit)', () => {
   });
 
   it('accepts valid unused aliases', async () => {
-    prisma.url.findFirst.mockResolvedValue(null);
+    repository.findByAlias.mockResolvedValue(null);
 
-    await expect(service.validate('valid-alias')).resolves.toBeUndefined();
+    await expect(service.validate('valid-alias')).resolves.toBe('valid-alias');
   });
 });

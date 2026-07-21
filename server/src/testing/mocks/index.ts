@@ -1,6 +1,7 @@
 import { PinoLogger } from 'nestjs-pino';
 
 import { PrismaService } from '../../prisma/prisma.service';
+import { RedisService } from '../../redis/redis.service';
 
 export type PrismaMock = {
   url: {
@@ -25,6 +26,26 @@ export function createPrismaMock(): PrismaMock {
     $executeRawUnsafe: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
+  };
+}
+
+export type RedisMock = {
+  ping: jest.Mock;
+  get: jest.Mock;
+  setex: jest.Mock;
+  del: jest.Mock;
+  quit: jest.Mock;
+  connect: jest.Mock;
+};
+
+export function createRedisMock(): RedisMock {
+  return {
+    ping: jest.fn().mockResolvedValue('PONG'),
+    get: jest.fn(),
+    setex: jest.fn().mockResolvedValue('OK'),
+    del: jest.fn().mockResolvedValue(1),
+    quit: jest.fn().mockResolvedValue('OK'),
+    connect: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -67,4 +88,4 @@ export function createConfigMock(values: Record<string, unknown> = {}): {
   };
 }
 
-export type { PrismaService };
+export type { PrismaService, RedisService };

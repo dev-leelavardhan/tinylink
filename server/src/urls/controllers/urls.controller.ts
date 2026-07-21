@@ -8,10 +8,10 @@ import {
   Post,
   Redirect,
 } from '@nestjs/common';
-import { type CreateUrlDto, createUrlSchema } from './dto/create-url.dto';
-import { UrlsService } from './service/urls.service';
-import { ZodValidationPipe } from '../zod/common.validation';
-import { CreateUrlResponseDto } from './dto/create-utl-response-dto';
+import { createUrlSchema, type CreateUrlDto } from '../dto/create-url.dto';
+import { UrlsService } from '../service/urls.service';
+import { CreateUrlResponseDto } from '../urls.interface';
+import { ZodValidationPipe } from '../../common/zod/common.validation';
 
 @Controller('urls')
 export class UrlsController {

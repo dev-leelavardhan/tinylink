@@ -3,20 +3,20 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
 import {
   MIN_ALIAS_LENGTH,
   MAX_ALIAS_LENGTH,
   ALIAS_REGEX,
   RESERVED_ALIASES,
 } from '../constants/alias.costants';
+import { UrlRepository } from '../repositories/url.repository';
 
 @Injectable()
 export class AliasValidatorService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly repository: UrlRepository) {}
 
-  async validate(alias: string): Promise<void> {
-    const normalized = alias.toLowerCase();
+  async validate(alias: string): Promise<string> {
+    const normalized = alias.trim().toLowerCase();
 
     if (normalized.length < MIN_ALIAS_LENGTH) {
       throw new BadRequestException('Alias is too short');
@@ -34,21 +34,12 @@ export class AliasValidatorService {
       throw new BadRequestException('Reserved alias');
     }
 
-    const exists = await this.prisma.url.findFirst({
-      where: {
-        OR: [
-          {
-            customAlias: normalized,
-          },
-          {
-            shortCode: normalized,
-          },
-        ],
-      },
-    });
+    const exists = await this.repository.findByAlias(normalized);
 
     if (exists) {
       throw new ConflictException('Alias already exists');
     }
+
+    return normalized;
   }
 }
