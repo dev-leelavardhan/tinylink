@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 
 import { ZodValidationPipe } from './common.validation';
-import { type CreateUrlDto, createUrlSchema } from '../urls/dto/create-url.dto';
+import { CreateUrlDto, createUrlSchema } from '../../urls/dto/create-url.dto';
 
 describe('ZodValidationPipe (unit)', () => {
   const pipe = new ZodValidationPipe(createUrlSchema);

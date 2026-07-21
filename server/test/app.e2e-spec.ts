@@ -2,10 +2,10 @@ import { INestApplication } from '@nestjs/common';
 import type { Server } from 'node:http';
 import request from 'supertest';
 
-import { CreateUrlResponseDto } from '../src/urls/dto/create-utl-response-dto';
 import { createTestApp } from './helpers/create-test-app';
 import { cleanDatabase } from './helpers/database.helper';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { CreateUrlResponseDto } from '../src/urls/urls.interface';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
@@ -41,7 +41,7 @@ describe('HealthController (e2e)', () => {
     return request(app.getHttpServer() as Server)
       .get('/health')
       .expect(200)
-      .expect({ status: 'ok', db: 'up' });
+      .expect({ status: 'ok', db: 'up', redis: 'up' });
   });
 });
 

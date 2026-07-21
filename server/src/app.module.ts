@@ -8,6 +8,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { pinoConfig } from './logger/pino.config';
 import { HealthModule } from './health/health.module';
 import { UrlsModule } from './urls/urls.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -24,6 +25,9 @@ import { UrlsModule } from './urls/urls.module';
 
     //urls modules
     UrlsModule,
+
+    //cache
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService],

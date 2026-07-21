@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { RedirectController } from '../urls.controller';
+import { RedirectController } from './urls.controller';
 import { UrlsService } from '../service/urls.service';
 
 describe('RedirectController (unit)', () => {
