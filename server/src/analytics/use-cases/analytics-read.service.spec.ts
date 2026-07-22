@@ -76,23 +76,23 @@ describe('AnalyticsReadService', () => {
 
       expect(repository.countByFilter).toHaveBeenCalledWith({
         urlId,
-        since: expect.any(Date),
+        since: expect.any(Date) as Date,
       });
       expect(repository.groupByBrowser).toHaveBeenCalledWith(
         urlId,
-        expect.any(Date),
+        expect.any(Date) as Date,
       );
       expect(repository.groupByCountry).toHaveBeenCalledWith(
         urlId,
-        expect.any(Date),
+        expect.any(Date) as Date,
       );
       expect(repository.groupByDevice).toHaveBeenCalledWith(
         urlId,
-        expect.any(Date),
+        expect.any(Date) as Date,
       );
       expect(repository.groupByDay).toHaveBeenCalledWith(
         urlId,
-        expect.any(Date),
+        expect.any(Date) as Date,
       );
       expect(mapper.toAggregatedResponse).toHaveBeenCalled();
       expect(result).toEqual(expectedResponse);
@@ -106,12 +106,28 @@ describe('AnalyticsReadService', () => {
       const limit = 10;
 
       const mockClicks = [
-        { id: 'click-1', timestamp: new Date(), browser: 'Chrome', os: 'Windows', device: 'Desktop', country: 'US', referrer: null },
+        {
+          id: 'click-1',
+          timestamp: new Date(),
+          browser: 'Chrome',
+          os: 'Windows',
+          device: 'Desktop',
+          country: 'US',
+          referrer: null,
+        },
       ];
       repository.findRecentClicks.mockResolvedValue(mockClicks);
       repository.countByFilter.mockResolvedValue(25);
 
-      const mappedClick = { id: 'click-1', timestamp: new Date(), browser: 'Chrome', os: 'Windows', device: 'Desktop', country: 'US', referrer: null };
+      const mappedClick = {
+        id: 'click-1',
+        timestamp: new Date(),
+        browser: 'Chrome',
+        os: 'Windows',
+        device: 'Desktop',
+        country: 'US',
+        referrer: null,
+      };
       mapper.toClickResponse.mockReturnValue(mappedClick);
 
       const result = await service.getRecentClicks(urlId, page, limit);
@@ -119,7 +135,7 @@ describe('AnalyticsReadService', () => {
       expect(repository.findRecentClicks).toHaveBeenCalledWith(urlId, 10, 10);
       expect(repository.countByFilter).toHaveBeenCalledWith({
         urlId,
-        since: expect.any(Date),
+        since: expect.any(Date) as Date,
       });
       expect(result).toEqual({
         clicks: [mappedClick],
@@ -146,11 +162,7 @@ describe('AnalyticsReadService', () => {
 
       await service.getRecentClicks('url-id', 1, 10);
 
-      expect(repository.findRecentClicks).toHaveBeenCalledWith(
-        'url-id',
-        0,
-        10,
-      );
+      expect(repository.findRecentClicks).toHaveBeenCalledWith('url-id', 0, 10);
     });
   });
 });

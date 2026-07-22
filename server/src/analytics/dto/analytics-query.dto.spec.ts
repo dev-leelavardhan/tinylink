@@ -1,4 +1,7 @@
-import { analyticsQuerySchema, paginationQuerySchema } from './analytics-query.dto';
+import {
+  analyticsQuerySchema,
+  paginationQuerySchema,
+} from './analytics-query.dto';
 import { ANALYTICS_CONSTANTS } from '../constants/analytics.constants';
 
 describe('Analytics DTOs', () => {

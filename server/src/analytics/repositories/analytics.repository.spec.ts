@@ -74,6 +74,7 @@ describe('AnalyticsRepository', () => {
 
       expect(prisma.url.update).toHaveBeenCalledWith({
         where: { id: 'url-id' },
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         data: { lastAccessedAt: expect.any(Date) },
       });
     });
@@ -232,6 +233,7 @@ describe('AnalyticsRepository', () => {
 
       expect(prisma.url.deleteMany).toHaveBeenCalledWith({
         where: {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           expiresAt: { lt: expect.any(Date) },
         },
       });

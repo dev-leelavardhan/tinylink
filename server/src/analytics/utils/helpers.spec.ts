@@ -114,9 +114,7 @@ describe('Analytics Helpers', () => {
 
   describe('normalizeReferrer', () => {
     it('extracts hostname from valid URL', () => {
-      expect(normalizeReferrer('https://example.com/path')).toBe(
-        'example.com',
-      );
+      expect(normalizeReferrer('https://example.com/path')).toBe('example.com');
     });
 
     it('returns null for undefined referrer', () => {

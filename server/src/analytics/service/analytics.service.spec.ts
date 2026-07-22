@@ -27,7 +27,13 @@ describe('AnalyticsService', () => {
 
   describe('getAggregated', () => {
     it('delegates to read service', async () => {
-      const expected = { total: 100, byBrowser: [], byCountry: [], byDevice: [], byDay: [] };
+      const expected = {
+        total: 100,
+        byBrowser: [],
+        byCountry: [],
+        byDevice: [],
+        byDay: [],
+      };
       readService.getAggregated.mockResolvedValue(expected);
 
       const result = await service.getAggregated('url-id', 30);

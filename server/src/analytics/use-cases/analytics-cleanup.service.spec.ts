@@ -78,10 +78,10 @@ describe('AnalyticsCleanupService', () => {
     it('computes correct retention date', async () => {
       await service.cleanup();
 
-      const retentionDate = repository.deleteOldAnalytics.mock.calls[0][0];
-      const expectedRetention = new Date(
-        Date.now() - 90 * 24 * 60 * 60 * 1000,
-      );
+      const callArgs = repository.deleteOldAnalytics.mock
+        .calls[0] as unknown as [Date];
+      const retentionDate = callArgs[0];
+      const expectedRetention = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
       expect(retentionDate.getTime()).toBeCloseTo(
         expectedRetention.getTime(),

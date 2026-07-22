@@ -82,8 +82,7 @@ describe('AnalyticsClickService', () => {
       const data: ClickJobData = {
         urlId: 'url-id',
         shortCode: 'abc123',
-        userAgent:
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
         referrer: 'https://example.com/page',
         ip: '192.168.1.1',
       };
@@ -96,7 +95,7 @@ describe('AnalyticsClickService', () => {
         os: 'Windows',
         device: 'Desktop',
         country: 'US',
-        ipHash: expect.any(String),
+        ipHash: expect.any(String) as string,
         referrer: 'example.com',
       });
     });
@@ -130,7 +129,7 @@ describe('AnalyticsClickService', () => {
       expect(repository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           country: null,
-          ipHash: expect.any(String),
+          ipHash: expect.any(String) as string,
         }),
       );
     });

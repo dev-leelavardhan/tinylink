@@ -25,7 +25,13 @@ describe('AnalyticsController', () => {
 
   describe('getAggregated', () => {
     it('returns aggregated analytics', async () => {
-      const expected = { total: 100, byBrowser: [], byCountry: [], byDevice: [], byDay: [] };
+      const expected = {
+        total: 100,
+        byBrowser: [],
+        byCountry: [],
+        byDevice: [],
+        byDay: [],
+      };
       service.getAggregated.mockResolvedValue(expected);
 
       const result = await controller.getAggregated('url-id', { days: 30 });

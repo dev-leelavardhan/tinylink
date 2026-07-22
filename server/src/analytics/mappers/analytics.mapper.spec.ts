@@ -109,7 +109,7 @@ describe('AnalyticsMapper', () => {
         byBrowser: [{ browser: 'Safari', _count: 42 }],
         byCountry: [{ country: 'JP', _count: 42 }],
         byDevice: [{ device: 'Mobile', _count: 42 }],
-        byDay: [{ date: new Date(), count: 42 }],
+        byDay: [{ date: new Date(), count: 42n }],
       };
 
       const result = mapper.toAggregatedResponse(data);
