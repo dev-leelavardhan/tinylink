@@ -1,6 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+
 import { PrismaService } from '../../prisma/prisma.service';
+
+interface AnalyticsFilter {
+  urlId: string;
+  since: Date;
+}
+
+interface DailyAnalytics {
+  date: Date;
+  count: bigint;
+}
 
 @Injectable()
 export class AnalyticsRepository {
@@ -12,61 +23,82 @@ export class AnalyticsRepository {
 
   updateLastAccessedAt(urlId: string) {
     return this.prisma.url.update({
-      where: { id: urlId },
-      data: { lastAccessedAt: new Date() },
+      where: {
+        id: urlId,
+      },
+      data: {
+        lastAccessedAt: new Date(),
+      },
     });
   }
 
-  async countByFilter(filter: {
-    urlId: string;
-    since: Date;
-  }): Promise<number> {
+  countByFilter(filter: AnalyticsFilter): Promise<number> {
     return this.prisma.analytics.count({
-      where: { urlId: filter.urlId, timestamp: { gte: filter.since } },
+      where: this.analyticsFilter(filter.urlId, filter.since),
     });
   }
 
-  async groupByBrowser(urlId: string, since: Date) {
+  groupByBrowser(urlId: string, since: Date) {
     return this.prisma.analytics.groupBy({
       by: ['browser'],
-      where: { urlId, timestamp: { gte: since } },
+      where: this.analyticsFilter(urlId, since),
       _count: true,
-      orderBy: { _count: { browser: 'desc' } },
+      orderBy: {
+        _count: {
+          browser: 'desc',
+        },
+      },
     });
   }
 
-  async groupByCountry(urlId: string, since: Date) {
+  groupByCountry(urlId: string, since: Date) {
     return this.prisma.analytics.groupBy({
       by: ['country'],
-      where: { urlId, timestamp: { gte: since } },
+      where: this.analyticsFilter(urlId, since),
       _count: true,
-      orderBy: { _count: { country: 'desc' } },
+      orderBy: {
+        _count: {
+          country: 'desc',
+        },
+      },
     });
   }
 
-  async groupByDevice(urlId: string, since: Date) {
+  groupByDevice(urlId: string, since: Date) {
     return this.prisma.analytics.groupBy({
       by: ['device'],
-      where: { urlId, timestamp: { gte: since } },
+      where: this.analyticsFilter(urlId, since),
       _count: true,
-      orderBy: { _count: { device: 'desc' } },
+      orderBy: {
+        _count: {
+          device: 'desc',
+        },
+      },
     });
   }
 
-  async groupByDay(urlId: string, since: Date) {
-    return this.prisma.$queryRaw`
-      SELECT DATE("timestamp") as date, COUNT(*) as count
+  groupByDay(urlId: string, since: Date): Promise<DailyAnalytics[]> {
+    return this.prisma.$queryRaw<DailyAnalytics[]>`
+      SELECT
+        DATE("timestamp") AS date,
+        COUNT(*) AS count
       FROM "Analytics"
-      WHERE "urlId" = ${urlId} AND "timestamp" >= ${since}
+      WHERE
+        "urlId" = ${urlId}
+        AND "timestamp" >= ${since}
       GROUP BY DATE("timestamp")
       ORDER BY date ASC
     `;
   }
 
-  async findRecentClicks(urlId: string, skip: number, take: number) {
+  findRecentClicks(urlId: string, skip: number, take: number) {
     return this.prisma.analytics.findMany({
-      where: { urlId },
-      orderBy: { timestamp: 'desc' },
+      where: {
+        urlId,
+      },
+      orderBy: {
+        timestamp: 'desc',
+      },
       skip,
       take,
       select: {
@@ -81,15 +113,35 @@ export class AnalyticsRepository {
     });
   }
 
-  async deleteExpiredUrls() {
+  deleteExpiredUrls() {
     return this.prisma.url.deleteMany({
-      where: { expiresAt: { lt: new Date() } },
+      where: {
+        expiresAt: {
+          lt: new Date(),
+        },
+      },
     });
   }
 
-  async deleteOldAnalytics(retentionDate: Date) {
+  deleteOldAnalytics(retentionDate: Date) {
     return this.prisma.analytics.deleteMany({
-      where: { timestamp: { lt: retentionDate } },
+      where: {
+        timestamp: {
+          lt: retentionDate,
+        },
+      },
     });
+  }
+
+  private analyticsFilter(
+    urlId: string,
+    since: Date,
+  ): Prisma.AnalyticsWhereInput {
+    return {
+      urlId,
+      timestamp: {
+        gte: since,
+      },
+    };
   }
 }

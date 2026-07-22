@@ -3,13 +3,13 @@ import { AnalyticsReadService } from '../use-cases/analytics-read.service';
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private readonly reader: AnalyticsReadService) {}
+  constructor(private readonly analyticsReadService: AnalyticsReadService) {}
 
   getAggregated(urlId: string, days: number) {
-    return this.reader.getAggregated(urlId, days);
+    return this.analyticsReadService.getAggregated(urlId, days);
   }
 
   getRecentClicks(urlId: string, page: number, limit: number) {
-    return this.reader.getRecentClicks(urlId, page, limit);
+    return this.analyticsReadService.getRecentClicks(urlId, page, limit);
   }
 }

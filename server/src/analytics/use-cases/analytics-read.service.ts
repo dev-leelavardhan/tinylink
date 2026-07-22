@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { AnalyticsRepository } from '../repositories/analytics.repository';
+
 import { AnalyticsMapper } from '../mappers/analytics.mapper';
+import { AnalyticsRepository } from '../repositories/analytics.repository';
+import { ALL_TIME, daysAgo } from '../utils/helpers';
 
 @Injectable()
 export class AnalyticsReadService {
@@ -10,7 +12,7 @@ export class AnalyticsReadService {
   ) {}
 
   async getAggregated(urlId: string, days: number) {
-    const since = new Date(Date.now() - days * 86400000);
+    const since = daysAgo(days);
 
     const [total, byBrowser, byCountry, byDevice, byDay] = await Promise.all([
       this.repository.countByFilter({ urlId, since }),
@@ -36,16 +38,18 @@ export class AnalyticsReadService {
       this.repository.findRecentClicks(urlId, skip, limit),
       this.repository.countByFilter({
         urlId,
-        since: new Date(0),
+        since: ALL_TIME,
       }),
     ]);
 
+    const totalClicks = Number(total);
+
     return {
       clicks: clicks.map((click) => this.mapper.toClickResponse(click)),
-      total: Number(total),
+      total: totalClicks,
       page,
       limit,
-      pages: Math.ceil(Number(total) / limit),
+      pages: Math.ceil(totalClicks / limit),
     };
   }
 }

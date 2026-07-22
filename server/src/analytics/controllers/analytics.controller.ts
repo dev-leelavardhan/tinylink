@@ -1,29 +1,32 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { AnalyticsService } from '../service/analytics.service';
+
+import { ZodValidationPipe } from '../../common/zod/common.validation';
 import {
   analyticsQuerySchema,
   paginationQuerySchema,
+  type AnalyticsQueryDto,
+  type PaginationQueryDto,
 } from '../dto/analytics-query.dto';
-import { ZodValidationPipe } from '../../common/zod/common.validation';
+import { AnalyticsService } from '../service/analytics.service';
 
 @Controller('urls/:urlId/analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get()
-  async getAggregated(
+  getAggregated(
     @Param('urlId') urlId: string,
     @Query(new ZodValidationPipe(analyticsQuerySchema))
-    query: { days: number },
+    query: AnalyticsQueryDto,
   ) {
     return this.analyticsService.getAggregated(urlId, query.days);
   }
 
   @Get('clicks')
-  async getRecentClicks(
+  getRecentClicks(
     @Param('urlId') urlId: string,
     @Query(new ZodValidationPipe(paginationQuerySchema))
-    query: { page: number; limit: number },
+    query: PaginationQueryDto,
   ) {
     return this.analyticsService.getRecentClicks(
       urlId,

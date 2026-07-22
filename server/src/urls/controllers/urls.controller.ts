@@ -35,14 +35,12 @@ export class RedirectController {
 
   @Get(':shortCode')
   @Redirect(undefined, HttpStatus.FOUND)
-  async redirect(
-    @Param('shortCode') shortCode: string,
-    @Req() req: Request,
-  ) {
+  async redirect(@Param('shortCode') shortCode: string, @Req() req: Request) {
+    const ip = req.ip ?? (req.socket ? req.socket.remoteAddress : undefined);
     const url = await this.urlsService.redirect(shortCode, {
       userAgent: req.headers['user-agent'] ?? '',
-      referrer: req.headers['referer'] as string | undefined,
-      ip: (req as any).ip ?? (req as any).socket?.remoteAddress,
+      referrer: req.headers['referer'],
+      ip,
     });
     return { url };
   }

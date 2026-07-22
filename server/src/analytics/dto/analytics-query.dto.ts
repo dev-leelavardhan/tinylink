@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { ANALYTICS_CONSTANTS } from '../constants/analytics.constants';
 
 export const analyticsQuerySchema = z.object({
@@ -6,14 +7,15 @@ export const analyticsQuerySchema = z.object({
     .number()
     .int()
     .min(1)
-    .max(365)
-    .default(30),
+    .max(ANALYTICS_CONSTANTS.MAX_ANALYTICS_DAYS)
+    .default(ANALYTICS_CONSTANTS.DEFAULT_ANALYTICS_DAYS),
 });
 
 export type AnalyticsQueryDto = z.infer<typeof analyticsQuerySchema>;
 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
+
   limit: z.coerce
     .number()
     .int()

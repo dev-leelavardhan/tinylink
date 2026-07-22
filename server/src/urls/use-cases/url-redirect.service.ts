@@ -14,7 +14,7 @@ import { UrlRepository } from '../repositories/url.repository';
 import { UrlMapper } from '../mappers/urls.mapper';
 import { UrlStateValidatorService } from '../validators/url-state-validator.service';
 import { AnalyticsQueue } from '../../analytics/queue/analytics.queue';
-import { type ClickJobData } from '../../analytics/analytics.interface';
+import { type ClickJobData } from '../../analytics/types';
 
 @Injectable()
 export class UrlRedirectService {

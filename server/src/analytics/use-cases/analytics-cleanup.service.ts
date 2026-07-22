@@ -1,31 +1,48 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { AnalyticsRepository } from '../repositories/analytics.repository';
+import { Injectable } from '@nestjs/common';
+import { PinoLogger } from 'nestjs-pino';
+
 import { ANALYTICS_CONSTANTS } from '../constants/analytics.constants';
+import { AnalyticsRepository } from '../repositories/analytics.repository';
+import { daysAgo } from '../utils/helpers';
 
 @Injectable()
 export class AnalyticsCleanupService {
-  private readonly logger = new Logger(AnalyticsCleanupService.name);
-
-  constructor(private readonly repository: AnalyticsRepository) {}
+  constructor(
+    private readonly repository: AnalyticsRepository,
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(AnalyticsCleanupService.name);
+  }
 
   async cleanup(): Promise<void> {
-    const now = new Date();
+    this.logger.info('Starting analytics cleanup');
 
-    const deletedUrls = await this.repository.deleteExpiredUrls();
-    this.logger.log(
-      { deletedCount: deletedUrls.count },
-      'Deleted expired URLs',
-    );
+    try {
+      const deletedUrls = await this.repository.deleteExpiredUrls();
 
-    const retentionDate = new Date(
-      now.getTime() -
-        ANALYTICS_CONSTANTS.DEFAULT_RETENTION_DAYS * 86400000,
-    );
-    const deletedAnalytics =
-      await this.repository.deleteOldAnalytics(retentionDate);
-    this.logger.log(
-      { deletedCount: deletedAnalytics.count },
-      'Deleted old analytics rows',
-    );
+      this.logger.info(
+        { deletedCount: deletedUrls.count },
+        'Expired URLs deleted',
+      );
+
+      const retentionDate = daysAgo(ANALYTICS_CONSTANTS.DEFAULT_RETENTION_DAYS);
+
+      const deletedAnalytics =
+        await this.repository.deleteOldAnalytics(retentionDate);
+
+      this.logger.info(
+        {
+          deletedCount: deletedAnalytics.count,
+          retentionDate,
+        },
+        'Old analytics deleted',
+      );
+
+      this.logger.info('Analytics cleanup completed');
+    } catch (err: unknown) {
+      this.logger.error({ err }, 'Analytics cleanup failed');
+
+      throw err;
+    }
   }
 }

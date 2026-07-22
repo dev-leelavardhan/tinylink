@@ -15,8 +15,129 @@ env:
   PNPM_VERSION: '9.15.4'
 
 jobs:
-  build-and-analyze:
-    name: Build and Analyze
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: server/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: server
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+        working-directory: server
+
+      - name: Build
+        run: pnpm build
+        working-directory: server
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dist
+          path: server/dist/
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tinylink
+          POSTGRES_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+          POSTGRES_DB: tinylink_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://tinylink:${{ secrets.TEST_DB_PASSWORD }}@localhost:5432/tinylink_test
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: server/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: server
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+        working-directory: server
+
+      - name: TypeCheck
+        run: pnpm typecheck
+        working-directory: server
+
+      - name: Lint
+        run: pnpm lint:check
+        working-directory: server
+
+      - name: Prisma Migrations
+        run: pnpm prisma migrate deploy
+        working-directory: server
+
+  unit-tests:
+    name: Unit Tests
+    needs: [build, lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: server/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: server
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+        working-directory: server
+
+      - name: Unit tests
+        run: pnpm test
+        working-directory: server
+
+  integ-tests:
+    name: Integration Tests
+    needs: [unit-tests]
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -67,20 +188,8 @@ jobs:
         run: pnpm prisma:generate
         working-directory: server
 
-      - name: Lint
-        run: pnpm lint:check
-        working-directory: server
-
-      - name: Typecheck
-        run: pnpm typecheck
-        working-directory: server
-
       - name: Run Prisma migrations
         run: pnpm prisma migrate deploy
-        working-directory: server
-
-      - name: Unit tests
-        run: pnpm test
         working-directory: server
 
       - name: Integration tests
@@ -91,11 +200,34 @@ jobs:
         run: pnpm test:e2e
         working-directory: server
 
-      - name: Build
-        run: pnpm build
+  sonarcloud:
+    name: SonarCloud
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: server/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
         working-directory: server
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+        working-directory: server
+
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4
         with:
           name: dist
           path: server/dist/

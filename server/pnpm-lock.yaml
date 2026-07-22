@@ -90,6 +90,9 @@ importers:
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
+      '@types/maxmind':
+        specifier: ^2.0.5
+        version: 2.0.5
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -1092,6 +1095,10 @@ packages:
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
+
+  '@types/maxmind@2.0.5':
+    resolution: {integrity: sha512-fGqeOLsZI189WqKrAvaGfLzaLg5T8NNenAHrvmRuIg6lLfQCMICw4kg9wxyxzLAJnxwN89CJhTq6DZQ/w1K5hw==}
+    deprecated: This is a stub types definition. maxmind provides its own type definitions, so you do not need this installed.
 
   '@types/methods@1.1.4':
     resolution: {integrity: sha512-ymXWVrDiCxTBE3+RIrrP533E70eA+9qu7zdWoHuOmGujkYtzf4HQF96b8nwHLqhuf4ykX61IGRIB38CC6/sImQ==}
@@ -4861,6 +4868,10 @@ snapshots:
       pretty-format: 30.4.1
 
   '@types/json-schema@7.0.15': {}
+
+  '@types/maxmind@2.0.5':
+    dependencies:
+      maxmind: 5.0.6
 
   '@types/methods@1.1.4': {}
 
