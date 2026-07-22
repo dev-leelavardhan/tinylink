@@ -14,7 +14,14 @@ export class UrlsService {
     return this.creator.create(dto);
   }
 
-  redirect(shortCode: string) {
-    return this.redirector.redirect(shortCode);
+  redirect(
+    shortCode: string,
+    requestMeta?: {
+      userAgent: string;
+      referrer?: string;
+      ip?: string;
+    },
+  ) {
+    return this.redirector.redirect(shortCode, requestMeta);
   }
 }

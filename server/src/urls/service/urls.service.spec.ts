@@ -51,13 +51,21 @@ describe('UrlsService (unit)', () => {
     it('delegates to UrlRedirectService', async () => {
       const shortCode = 'abc1234';
       const expectedUrl = 'https://example.com';
+      const requestMeta = {
+        userAgent: 'test-agent',
+        referrer: 'https://example.com',
+        ip: '127.0.0.1',
+      };
 
       mockRedirector.redirect.mockResolvedValue(expectedUrl);
 
-      const result = await service.redirect(shortCode);
+      const result = await service.redirect(shortCode, requestMeta);
 
       expect(result).toBe(expectedUrl);
-      expect(mockRedirector.redirect).toHaveBeenCalledWith(shortCode);
+      expect(mockRedirector.redirect).toHaveBeenCalledWith(
+        shortCode,
+        requestMeta,
+      );
     });
   });
 });

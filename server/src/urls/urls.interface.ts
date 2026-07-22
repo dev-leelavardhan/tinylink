@@ -1,4 +1,5 @@
 export interface CreateUrlResponseDto {
+  id: string;
   shortCode: string;
   shortUrl: string;
   originalUrl: string;

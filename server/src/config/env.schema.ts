@@ -35,6 +35,10 @@ export const envSchema = z
       .min(0)
       .max(1023)
       .default(1),
+
+    IP_HASH_SALT: z.string().min(16),
+
+    GEOLITE2_DB_PATH: z.string().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.SHORT_CODE_STRATEGY === 'hashids' && !env.SHORT_CODE_HASHIDS_SALT) {

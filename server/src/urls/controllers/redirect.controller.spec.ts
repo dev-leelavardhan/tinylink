@@ -23,9 +23,17 @@ describe('RedirectController (unit)', () => {
   it('returns the redirect URL for a valid short code', async () => {
     urlsService.redirect.mockResolvedValue('https://destination.example');
 
-    const result = await controller.redirect('abc123');
+    const result = await controller.redirect('abc123', {
+      headers: { 'user-agent': 'test-agent', referer: 'https://example.com' },
+      ip: '127.0.0.1',
+      socket: { remoteAddress: '127.0.0.1' },
+    } as any);
 
     expect(result).toEqual({ url: 'https://destination.example' });
-    expect(urlsService.redirect).toHaveBeenCalledWith('abc123');
+    expect(urlsService.redirect).toHaveBeenCalledWith('abc123', {
+      userAgent: 'test-agent',
+      referrer: 'https://example.com',
+      ip: '127.0.0.1',
+    });
   });
 });
