@@ -132,8 +132,13 @@ jobs:
         working-directory: server
 
       - name: Unit tests
-        run: pnpm test
+        run: pnpm test:cov
         working-directory: server
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage
+          path: server/coverage/
 
   integ-tests:
     name: Integration Tests
@@ -202,7 +207,7 @@ jobs:
 
   sonarcloud:
     name: SonarCloud
-    needs: [build]
+    needs: [build, unit-tests]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -231,6 +236,11 @@ jobs:
         with:
           name: dist
           path: server/dist/
+
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4
+        with:
+          name: coverage
+          path: server/coverage/
 
       - name: SonarCloud Scan and Quality Gate
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
