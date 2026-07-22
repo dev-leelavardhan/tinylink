@@ -100,7 +100,8 @@
       "!**/*.spec.ts",
       "!**/testing/**",
       "!**/*.module.ts",
-      "!**/main.ts"
+      "!**/main.ts",
+      "!**/coverage/**"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
