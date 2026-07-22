@@ -25,6 +25,8 @@ model Url {
   expiresAt      DateTime?
 
   disabled       Boolean  @default(false)
+  
+  analytics      Analytics[]
 
   lastAccessedAt DateTime?
 
@@ -37,4 +39,31 @@ model Url {
   @@unique([originalUrl, strategy])
   @@index([expiresAt])
   @@index([disabled])
+}
+
+model Analytics {
+  id        String   @id @default(cuid())
+  urlId     String
+  url       Url      @relation(fields: [urlId], references: [id], onDelete: Cascade)
+
+  timestamp DateTime @default(now())
+
+  // Parsed from User-Agent
+  browser   String?  // e.g. "Chrome", "Firefox"
+  os        String?  // e.g. "Windows", "macOS", "Linux"
+  device    String?  // e.g. "Desktop", "Mobile", "Tablet"
+
+  // GeoIP
+  country   String?  // ISO 3166-1 alpha-2 code, e.g. "US"
+  city      String?  // optional, from GeoLite2
+
+  // Privacy: hash IP with salt, never store raw
+  ipHash    String
+
+  // Referrer (normalized)
+  referrer  String?
+
+  @@index([urlId, timestamp])
+  @@index([urlId, browser])
+  @@index([urlId, country])
 }

@@ -9,6 +9,7 @@ export class UrlMapper {
 
   toResponse(url: Url): CreateUrlResponseDto {
     return {
+      id: url.id,
       originalUrl: url.originalUrl,
       shortCode: url.shortCode,
       shortUrl: new URL(

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { UrlsService } from './service/urls.service';
 import { ShortCodeModule } from '../common/short-code/short-code.module';
+import { AnalyticsModule } from '../analytics/analytics.module';
 import { AliasValidatorService } from './validators/alias-validator.service';
 import { UrlStateValidatorService } from './validators/url-state-validator.service';
 import { UrlCacheService } from './service/urls-cache.service';
@@ -14,7 +15,7 @@ import {
 } from './controllers/urls.controller';
 
 @Module({
-  imports: [ShortCodeModule],
+  imports: [ShortCodeModule, AnalyticsModule],
   controllers: [UrlsController, RedirectController],
   providers: [
     UrlsService,

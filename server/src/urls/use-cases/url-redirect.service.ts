@@ -13,6 +13,8 @@ import {
 import { UrlRepository } from '../repositories/url.repository';
 import { UrlMapper } from '../mappers/urls.mapper';
 import { UrlStateValidatorService } from '../validators/url-state-validator.service';
+import { AnalyticsQueue } from '../../analytics/queue/analytics.queue';
+import { type ClickJobData } from '../../analytics/types';
 
 @Injectable()
 export class UrlRedirectService {
@@ -22,13 +24,19 @@ export class UrlRedirectService {
     private readonly urlMapper: UrlMapper,
     private readonly validator: UrlStateValidatorService,
     private readonly logger: PinoLogger,
+    private readonly analyticsQueue: AnalyticsQueue,
   ) {
     this.logger.setContext(UrlRedirectService.name);
   }
 
-  async redirect(shortCode: string): Promise<string> {
-    this.logger.debug({ shortCode }, URL_REDIRECT_LOG_MESSAGES.RESOLVING_URL);
-
+  async redirect(
+    shortCode: string,
+    requestMeta?: {
+      userAgent: string;
+      referrer?: string;
+      ip?: string;
+    },
+  ): Promise<string> {
     try {
       const cached = await this.cache.get(shortCode);
 
@@ -43,6 +51,8 @@ export class UrlRedirectService {
           },
           URL_REDIRECT_LOG_MESSAGES.REDIRECT_SUCCESS,
         );
+
+        this.enqueueClick(cached.id, shortCode, requestMeta);
 
         return cached.originalUrl;
       }
@@ -70,6 +80,8 @@ export class UrlRedirectService {
         URL_REDIRECT_LOG_MESSAGES.REDIRECT_SUCCESS,
       );
 
+      this.enqueueClick(url.id, shortCode, requestMeta);
+
       return url.originalUrl;
     } catch (error: unknown) {
       if (
@@ -89,5 +101,27 @@ export class UrlRedirectService {
 
       throw new InternalServerErrorException();
     }
+  }
+
+  private enqueueClick(
+    urlId: string,
+    shortCode: string,
+    requestMeta?: {
+      userAgent: string;
+      referrer?: string;
+      ip?: string;
+    },
+  ): void {
+    this.analyticsQueue
+      .add('click', {
+        urlId,
+        shortCode,
+        userAgent: requestMeta?.userAgent ?? '',
+        referrer: requestMeta?.referrer,
+        ip: requestMeta?.ip,
+      } satisfies ClickJobData)
+      .catch((err: unknown) => {
+        this.logger.warn({ err, shortCode }, 'Failed to enqueue analytics');
+      });
   }
 }

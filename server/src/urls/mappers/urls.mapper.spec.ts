@@ -30,6 +30,7 @@ describe('UrlMapper', () => {
       const result = mapper.toResponse(url);
 
       expect(result).toEqual({
+        id: '1',
         originalUrl: 'https://example.com',
         shortCode: 'abc123',
         shortUrl: 'http://localhost:3000/abc123',

@@ -7,6 +7,7 @@ describe('envSchema (unit)', () => {
     JWT_ACCESS_SECRET: 'a'.repeat(32),
     JWT_REFRESH_SECRET: 'b'.repeat(32),
     BASE_URL: 'http://localhost:3000',
+    IP_HASH_SALT: 'a'.repeat(16),
   };
 
   it('passes with valid env', () => {

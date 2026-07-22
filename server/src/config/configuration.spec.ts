@@ -18,6 +18,7 @@ describe('configuration (unit)', () => {
     process.env.JWT_ACCESS_SECRET = 'a'.repeat(32);
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
     process.env.BASE_URL = 'http://localhost:3000';
+    process.env.IP_HASH_SALT = 'a'.repeat(16);
 
     const result = configuration();
 
