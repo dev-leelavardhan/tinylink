@@ -13,6 +13,7 @@ import { createLoggerMock } from '../../testing/mocks';
 import { PinoLogger } from 'nestjs-pino';
 import { CachedUrl } from '../../redis/redis.interface';
 import { Url } from '../urls.interface';
+import { AnalyticsQueue } from '../../analytics/queue/analytics.queue';
 
 describe('UrlRedirectService', () => {
   let service: UrlRedirectService;
@@ -43,6 +44,10 @@ describe('UrlRedirectService', () => {
 
   const logger = createLoggerMock();
 
+  const analyticsQueue = {
+    add: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     mapper.toCached.mockImplementation((url: Url) => ({
@@ -63,6 +68,7 @@ describe('UrlRedirectService', () => {
         { provide: UrlMapper, useValue: mapper },
         { provide: UrlStateValidatorService, useValue: validator },
         { provide: PinoLogger, useValue: logger },
+        { provide: AnalyticsQueue, useValue: analyticsQueue },
       ],
     }).compile();
 

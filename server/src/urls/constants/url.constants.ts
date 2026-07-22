@@ -13,7 +13,6 @@ export const URL_CREATE_LOG_MESSAGES = {
 } as const;
 
 export const URL_REDIRECT_LOG_MESSAGES = {
-  RESOLVING_URL: 'Resolving short URL',
   REDIRECT_SUCCESS: 'Redirected to original URL',
 } as const;
 
