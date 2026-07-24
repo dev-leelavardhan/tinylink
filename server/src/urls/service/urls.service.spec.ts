@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UrlsService } from './urls.service';
 import { UrlCreateService } from '../use-cases/url-create.service';
 import { UrlRedirectService } from '../use-cases/url-redirect.service';
+import { UrlQrService } from '../use-cases/url-qr.service';
 import { CreateUrlDto } from '../dto/create-url.dto';
 
 describe('UrlsService (unit)', () => {
@@ -15,6 +16,10 @@ describe('UrlsService (unit)', () => {
     redirect: jest.fn(),
   };
 
+  const mockQrService = {
+    generate: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -23,6 +28,7 @@ describe('UrlsService (unit)', () => {
         UrlsService,
         { provide: UrlCreateService, useValue: mockCreator },
         { provide: UrlRedirectService, useValue: mockRedirector },
+        { provide: UrlQrService, useValue: mockQrService },
       ],
     }).compile();
 
@@ -65,6 +71,29 @@ describe('UrlsService (unit)', () => {
       expect(mockRedirector.redirect).toHaveBeenCalledWith(
         shortCode,
         requestMeta,
+      );
+    });
+  });
+
+  describe('getQrCode', () => {
+    it('delegates to UrlQrService', async () => {
+      const shortCode = 'abc1234';
+      const format = 'png';
+      const size = 300;
+      const expectedResult = {
+        buffer: Buffer.from('fake-png'),
+        contentType: 'image/png',
+      };
+
+      mockQrService.generate.mockResolvedValue(expectedResult);
+
+      const result = await service.getQrCode(shortCode, format, size);
+
+      expect(result).toEqual(expectedResult);
+      expect(mockQrService.generate).toHaveBeenCalledWith(
+        shortCode,
+        format,
+        size,
       );
     });
   });
