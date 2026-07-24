@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   MAX_ALIAS_LENGTH,
   MIN_ALIAS_LENGTH,
-} from '../constants/alias.costants';
+} from '../constants/alias.constants';
 
 export const createUrlSchema = z.object({
   originalUrl: z

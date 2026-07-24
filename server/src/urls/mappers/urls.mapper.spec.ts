@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { UrlMapper } from './urls.mapper';
 import { createConfigMock } from '../../testing/mocks';
-import { Url } from '../urls.interface';
+import { type Url } from '../types';
 
 describe('UrlMapper', () => {
   let mapper: UrlMapper;

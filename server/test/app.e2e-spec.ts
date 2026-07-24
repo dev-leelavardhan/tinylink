@@ -1,11 +1,12 @@
 import { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Server } from 'node:http';
 import request from 'supertest';
 
 import { createTestApp } from './helpers/create-test-app';
-import { cleanDatabase } from './helpers/database.helper';
+import { cleanDatabase, flushAnalyticsQueue } from './helpers/database.helper';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { CreateUrlResponseDto } from '../src/urls/urls.interface';
+import { CreateUrlResponseDto } from '../src/urls/types';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
@@ -48,15 +49,18 @@ describe('HealthController (e2e)', () => {
 describe('Urls API (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let redisUrl: string;
 
   beforeAll(async () => {
     app = await createTestApp();
     prisma = app.get(PrismaService);
+    redisUrl = app.get(ConfigService).getOrThrow<string>('REDIS_URL');
     await prisma.onModuleInit();
   });
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
+    await flushAnalyticsQueue(redisUrl);
   });
 
   afterAll(async () => {

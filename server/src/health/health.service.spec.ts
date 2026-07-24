@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { createPrismaMock, createRedisMock } from '../testing/mocks';
 import { PrismaService } from '../prisma/prisma.service';
-import { RedisService } from '../redis/redis.service';
+import { RedisService } from '../redis/service/redis.service';
 import { HealthService } from './health.service';
 
 describe('HealthService (unit)', () => {

@@ -1,6 +1,6 @@
 import { GoneException, Injectable } from '@nestjs/common';
-import { CachedUrl } from '../../redis/redis.interface';
-import { Url } from '../urls.interface';
+import { type CachedUrl } from '../../cache/types';
+import { type Url } from '../types';
 import { URL_REDIRECT_ERROR_MESSAGES } from '../constants/url.constants';
 
 @Injectable()

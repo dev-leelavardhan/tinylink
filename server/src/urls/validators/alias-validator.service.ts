@@ -8,7 +8,7 @@ import {
   MAX_ALIAS_LENGTH,
   ALIAS_REGEX,
   RESERVED_ALIASES,
-} from '../constants/alias.costants';
+} from '../constants/alias.constants';
 import { UrlRepository } from '../repositories/url.repository';
 
 @Injectable()

@@ -4,15 +4,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { PinoLogger } from 'nestjs-pino';
+
 import { UrlRedirectService } from './url-redirect.service';
 import { UrlCacheService } from '../service/urls-cache.service';
 import { UrlRepository } from '../repositories/url.repository';
 import { UrlMapper } from '../mappers/urls.mapper';
 import { UrlStateValidatorService } from '../validators/url-state-validator.service';
 import { createLoggerMock } from '../../testing/mocks';
-import { PinoLogger } from 'nestjs-pino';
-import { CachedUrl } from '../../redis/redis.interface';
-import { Url } from '../urls.interface';
+import { type CachedUrl } from '../../cache/types';
+import { type Url } from '../types';
 import { AnalyticsQueue } from '../../analytics/queue/analytics.queue';
 
 describe('UrlRedirectService', () => {

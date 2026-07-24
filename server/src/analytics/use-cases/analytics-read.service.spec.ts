@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AnalyticsReadService } from './analytics-read.service';
 import { AnalyticsRepository } from '../repositories/analytics.repository';
 import { AnalyticsMapper } from '../mappers/analytics.mapper';
+import { PinoLogger } from 'nestjs-pino';
 
 describe('AnalyticsReadService', () => {
   let service: AnalyticsReadService;
@@ -38,6 +39,10 @@ describe('AnalyticsReadService', () => {
         AnalyticsReadService,
         { provide: AnalyticsRepository, useValue: repository },
         { provide: AnalyticsMapper, useValue: mapper },
+        {
+          provide: PinoLogger,
+          useValue: { setContext: jest.fn(), info: jest.fn(), warn: jest.fn() },
+        },
       ],
     }).compile();
 
