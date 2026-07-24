@@ -1,6 +1,8 @@
 import { InternalServerErrorException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
+import { PinoLogger } from 'nestjs-pino';
+
 import { UrlCreateService } from './url-create.service';
 import { ShortCodeGeneratorService } from '../../common/short-code/short-code-generator.service';
 import { UrlCacheService } from '../service/urls-cache.service';
@@ -8,9 +10,8 @@ import { AliasValidatorService } from '../validators/alias-validator.service';
 import { UrlRepository } from '../repositories/url.repository';
 import { UrlMapper } from '../mappers/urls.mapper';
 import { createLoggerMock } from '../../testing/mocks';
-import { PinoLogger } from 'nestjs-pino';
 import { CreateUrlDto } from '../dto/create-url.dto';
-import { Url } from '../urls.interface';
+import { type Url } from '../types';
 
 describe('UrlCreateService', () => {
   let service: UrlCreateService;

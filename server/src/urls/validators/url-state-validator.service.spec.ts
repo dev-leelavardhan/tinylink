@@ -1,7 +1,7 @@
 import { GoneException } from '@nestjs/common';
 import { UrlStateValidatorService } from './url-state-validator.service';
-import { CachedUrl } from '../../redis/redis.interface';
-import { Url } from '../urls.interface';
+import { type CachedUrl } from '../../cache/types';
+import { type Url } from '../types';
 
 describe('UrlStateValidatorService', () => {
   let service: UrlStateValidatorService;

@@ -33,6 +33,8 @@ describe('AnalyticsClickService', () => {
   };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     repository = {
       create: jest.fn().mockResolvedValue({}),
       updateLastAccessedAt: jest.fn().mockResolvedValue({}),
@@ -71,6 +73,18 @@ describe('AnalyticsClickService', () => {
       expect(logger.info).toHaveBeenCalledWith(
         { database: './test.mmdb' },
         'GeoLite2 database loaded',
+      );
+    });
+
+    it('handles missing GeoLite2 database', async () => {
+      const fs: { access: jest.Mock } = jest.requireMock('node:fs/promises');
+      fs.access.mockRejectedValueOnce(new Error('ENOENT'));
+
+      await service.onModuleInit();
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        { database: './test.mmdb' },
+        'GeoLite2 database not found, country resolution disabled',
       );
     });
   });
@@ -149,6 +163,100 @@ describe('AnalyticsClickService', () => {
       expect(repository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           referrer: null,
+        }),
+      );
+    });
+
+    it('handles P2025 error gracefully', async () => {
+      await service.onModuleInit();
+
+      const prismaError = Object.assign(new Error('Record not found'), {
+        code: 'P2025',
+      });
+      repository.create.mockRejectedValueOnce(prismaError);
+
+      const data: ClickJobData = {
+        urlId: 'url-id',
+        shortCode: 'abc123',
+        userAgent: 'Mozilla/5.0 Chrome/120.0.0.0',
+        ip: '192.168.1.1',
+      };
+
+      await service.processClick(data);
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        { urlId: 'url-id' },
+        'URL not found, skipping analytics recording',
+      );
+      expect(repository.updateLastAccessedAt).not.toHaveBeenCalled();
+    });
+
+    it('re-throws non-P2025 errors', async () => {
+      await service.onModuleInit();
+
+      const error = new Error('Database connection failed');
+      repository.create.mockRejectedValueOnce(error);
+
+      const data: ClickJobData = {
+        urlId: 'url-id',
+        shortCode: 'abc123',
+        userAgent: 'Mozilla/5.0 Chrome/120.0.0.0',
+        ip: '192.168.1.1',
+      };
+
+      await expect(service.processClick(data)).rejects.toThrow(
+        'Database connection failed',
+      );
+    });
+  });
+
+  describe('resolveCountry', () => {
+    it('returns null when geoIpReader throws', async () => {
+      const maxmind: { open: jest.Mock } = jest.requireMock('maxmind');
+      maxmind.open.mockResolvedValueOnce({
+        get: jest.fn().mockImplementation(() => {
+          throw new Error('GeoIP lookup failed');
+        }),
+      });
+
+      await service.onModuleInit();
+
+      const data: ClickJobData = {
+        urlId: 'url-id',
+        shortCode: 'abc123',
+        userAgent: 'Mozilla/5.0 Chrome/120.0.0.0',
+        ip: '192.168.1.1',
+      };
+
+      await service.processClick(data);
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          country: null,
+        }),
+      );
+    });
+
+    it('returns null when country is not available', async () => {
+      const maxmind: { open: jest.Mock } = jest.requireMock('maxmind');
+      maxmind.open.mockResolvedValueOnce({
+        get: jest.fn().mockReturnValue({ country: null }),
+      });
+
+      await service.onModuleInit();
+
+      const data: ClickJobData = {
+        urlId: 'url-id',
+        shortCode: 'abc123',
+        userAgent: 'Mozilla/5.0 Chrome/120.0.0.0',
+        ip: '192.168.1.1',
+      };
+
+      await service.processClick(data);
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          country: null,
         }),
       );
     });

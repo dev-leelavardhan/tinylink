@@ -1,9 +1,10 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
+
 import { ShortCodeGeneratorService } from '../../common/short-code/short-code-generator.service';
 import { UrlCacheService } from '../service/urls-cache.service';
 import { AliasValidatorService } from '../validators/alias-validator.service';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import {
   URL_CREATE_LOG_MESSAGES,
   URL_CONSTANTS,
@@ -11,7 +12,7 @@ import {
 } from '../constants/url.constants';
 import { CreateUrlDto } from '../dto/create-url.dto';
 import { UrlRepository } from '../repositories/url.repository';
-import { CreateUrlResponseDto } from '../urls.interface';
+import { type CreateUrlResponseDto } from '../types';
 import { UrlMapper } from '../mappers/urls.mapper';
 import { isUniqueConstraintOn } from '../utils/helpers';
 

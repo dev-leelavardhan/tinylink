@@ -1,7 +1,7 @@
 import { PinoLogger } from 'nestjs-pino';
 
 export type { PrismaService } from '../../prisma/prisma.service';
-export type { RedisService } from '../../redis/redis.service';
+export type { RedisService } from '../../redis/service/redis.service';
 
 export type PrismaMock = {
   url: {

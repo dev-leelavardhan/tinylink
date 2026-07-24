@@ -1,27 +1,31 @@
 import { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Server } from 'node:http';
 import request from 'supertest';
 
 import { createTestApp } from './helpers/create-test-app';
-import { cleanDatabase } from './helpers/database.helper';
+import { cleanDatabase, flushAnalyticsQueue } from './helpers/database.helper';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { RedisService } from '../src/redis/redis.service';
-import { CACHE_CONSTANTS } from '../src/redis/redis.constants';
-import { CreateUrlResponseDto } from '../src/urls/urls.interface';
+import { RedisService } from '../src/redis/service/redis.service';
+import { CACHE_CONSTANTS } from '../src/cache/constants/cache.constants';
+import { CreateUrlResponseDto } from '../src/urls/types';
 
 describe('Redis Cache (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let redis: RedisService;
+  let redisUrl: string;
 
   beforeAll(async () => {
     app = await createTestApp();
     prisma = app.get(PrismaService);
     redis = app.get(RedisService);
+    redisUrl = app.get(ConfigService).getOrThrow<string>('REDIS_URL');
   });
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
+    await flushAnalyticsQueue(redisUrl);
     // Flush test keys
     const keys = await redis.keys('url:*');
     if (keys.length > 0) {

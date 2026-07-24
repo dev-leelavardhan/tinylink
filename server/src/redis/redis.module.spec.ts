@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { RedisModule } from './redis.module';
-import { RedisService } from './redis.service';
+import { RedisService } from './service/redis.service';
 
 const redisMock = {
   ping: jest.fn().mockResolvedValue('PONG'),

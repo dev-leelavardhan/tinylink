@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CachedUrl } from '../../redis/redis.interface';
-import { CreateUrlResponseDto, Url } from '../urls.interface';
+import { type CachedUrl } from '../../cache/types';
+import { type CreateUrlResponseDto, type Url } from '../types';
 
 @Injectable()
 export class UrlMapper {
