@@ -47,4 +47,17 @@ describe('AnalyticsQueue', () => {
   it('has add method', () => {
     expect(typeof queue.add).toBe('function');
   });
+
+  it('closes queue on module destroy', async () => {
+    // Call onModuleDestroy directly on the class prototype since the mock
+    // doesn't properly set up the extends chain
+    const closeSpy = jest.fn().mockResolvedValue(undefined);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    (queue as any).close = closeSpy;
+
+    // Call the method directly since the mock breaks the prototype chain
+    await AnalyticsQueue.prototype.onModuleDestroy.call(queue);
+
+    expect(closeSpy).toHaveBeenCalled();
+  });
 });

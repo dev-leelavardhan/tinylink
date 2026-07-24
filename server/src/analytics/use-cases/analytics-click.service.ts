@@ -51,17 +51,28 @@ export class AnalyticsClickService implements OnModuleInit {
     const ipHash = hashIp(ip, this.ipSalt);
     const country = this.resolveCountry(ip);
 
-    await this.repository.create({
-      url: { connect: { id: urlId } },
-      browser,
-      os,
-      device,
-      country,
-      ipHash,
-      referrer: normalizeReferrer(referrer),
-    });
+    try {
+      await this.repository.create({
+        url: { connect: { id: urlId } },
+        browser,
+        os,
+        device,
+        country,
+        ipHash,
+        referrer: normalizeReferrer(referrer),
+      });
 
-    await this.repository.updateLastAccessedAt(urlId);
+      await this.repository.updateLastAccessedAt(urlId);
+    } catch (err: unknown) {
+      if (err instanceof Error && 'code' in err && err.code === 'P2025') {
+        this.logger.warn(
+          { urlId },
+          'URL not found, skipping analytics recording',
+        );
+        return;
+      }
+      throw err;
+    }
   }
 
   private resolveCountry(ip?: string): string | null {

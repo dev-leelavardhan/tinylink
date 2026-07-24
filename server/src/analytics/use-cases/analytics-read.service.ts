@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { PinoLogger } from 'nestjs-pino';
 
 import { AnalyticsMapper } from '../mappers/analytics.mapper';
 import { AnalyticsRepository } from '../repositories/analytics.repository';
@@ -9,7 +10,10 @@ export class AnalyticsReadService {
   constructor(
     private readonly repository: AnalyticsRepository,
     private readonly mapper: AnalyticsMapper,
-  ) {}
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(AnalyticsReadService.name);
+  }
 
   async getAggregated(urlId: string, days: number) {
     const since = daysAgo(days);

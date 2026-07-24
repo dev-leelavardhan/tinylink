@@ -4,15 +4,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { PinoLogger } from 'nestjs-pino';
+
 import { UrlRedirectService } from './url-redirect.service';
 import { UrlCacheService } from '../service/urls-cache.service';
 import { UrlRepository } from '../repositories/url.repository';
 import { UrlMapper } from '../mappers/urls.mapper';
 import { UrlStateValidatorService } from '../validators/url-state-validator.service';
 import { createLoggerMock } from '../../testing/mocks';
-import { PinoLogger } from 'nestjs-pino';
-import { CachedUrl } from '../../redis/redis.interface';
-import { Url } from '../urls.interface';
+import { type CachedUrl } from '../../cache/types';
+import { type Url } from '../types';
 import { AnalyticsQueue } from '../../analytics/queue/analytics.queue';
 
 describe('UrlRedirectService', () => {
@@ -224,6 +225,30 @@ describe('UrlRedirectService', () => {
 
       await expect(service.redirect('gone')).rejects.toBeInstanceOf(
         NotFoundException,
+      );
+    });
+
+    it('logs warning when analytics queue add fails', async () => {
+      validator.validate.mockReset();
+      const url: Url = {
+        id: '9',
+        originalUrl: 'https://analytics-fail.example.com',
+        shortCode: 'analytics-fail',
+        customAlias: null,
+        disabled: false,
+        expiresAt: null,
+      };
+      cache.get.mockResolvedValue(null);
+      repository.findByShortCodeOrAlias.mockResolvedValue(url);
+      analyticsQueue.add.mockRejectedValue(new Error('queue full'));
+
+      const result = await service.redirect('analytics-fail');
+
+      expect(result).toBe('https://analytics-fail.example.com');
+      // The redirect should succeed even if analytics enqueue fails
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ shortCode: 'analytics-fail' }),
+        'Failed to enqueue analytics',
       );
     });
   });

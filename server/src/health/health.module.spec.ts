@@ -6,7 +6,7 @@ import { HealthService } from './health.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisModule } from '../redis/redis.module';
-import { RedisService } from '../redis/redis.service';
+import { RedisService } from '../redis/service/redis.service';
 
 const prismaMock = {
   $queryRaw: jest.fn(),

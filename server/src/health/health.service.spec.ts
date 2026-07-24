@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { createPrismaMock, createRedisMock } from '../testing/mocks';
 import { PrismaService } from '../prisma/prisma.service';
-import { RedisService } from '../redis/redis.service';
+import { RedisService } from '../redis/service/redis.service';
 import { HealthService } from './health.service';
 
 describe('HealthService (unit)', () => {
@@ -51,5 +51,14 @@ describe('HealthService (unit)', () => {
     await expect(service.check()).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
+  });
+
+  it('returns degraded when redis ping returns non-PONG', async () => {
+    prisma.$queryRaw.mockResolvedValue([{ '?column?': 1 }]);
+    redis.ping.mockResolvedValue('NOTPONG');
+
+    const result = await service.check();
+
+    expect(result).toEqual({ status: 'ok', db: 'up', redis: 'degraded' });
   });
 });

@@ -10,10 +10,11 @@ import {
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
+
+import { ZodValidationPipe } from '../../common/zod/common.validation';
 import { createUrlSchema, type CreateUrlDto } from '../dto/create-url.dto';
 import { UrlsService } from '../service/urls.service';
-import { CreateUrlResponseDto } from '../urls.interface';
-import { ZodValidationPipe } from '../../common/zod/common.validation';
+import { type CreateUrlResponseDto } from '../types';
 
 @Controller('urls')
 export class UrlsController {
