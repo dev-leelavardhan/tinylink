@@ -11,12 +11,25 @@ describe('CacheService', () => {
     setex: jest.Mock;
     del: jest.Mock;
   };
+  let logger: {
+    setContext: jest.Mock;
+    debug: jest.Mock;
+    warn: jest.Mock;
+  };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     redis = {
       get: jest.fn(),
       setex: jest.fn(),
       del: jest.fn(),
+    };
+
+    logger = {
+      setContext: jest.fn(),
+      debug: jest.fn(),
+      warn: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -25,11 +38,7 @@ describe('CacheService', () => {
         { provide: RedisService, useValue: redis },
         {
           provide: PinoLogger,
-          useValue: {
-            setContext: jest.fn(),
-            debug: jest.fn(),
-            warn: jest.fn(),
-          },
+          useValue: logger,
         },
       ],
     }).compile();
@@ -85,6 +94,15 @@ describe('CacheService', () => {
 
       expect(result).toBeNull();
     });
+
+    it('should return null on Redis error', async () => {
+      redis.get.mockRejectedValue(new Error('Redis connection failed'));
+
+      const result = await service.get('test-code');
+
+      expect(result).toBeNull();
+      expect(logger.warn).toHaveBeenCalled();
+    });
   });
 
   describe('set', () => {
@@ -109,6 +127,24 @@ describe('CacheService', () => {
         JSON.stringify(data),
       );
     });
+
+    it('should handle Redis error gracefully', async () => {
+      redis.setex.mockRejectedValue(new Error('Redis connection failed'));
+
+      const data = {
+        id: '1',
+        originalUrl: 'https://example.com',
+        shortCode: 'test-code',
+        customAlias: null,
+        disabled: false,
+        expiresAt: null,
+        lastAccessedAt: null,
+      };
+
+      await service.set('test-code', data);
+
+      expect(logger.warn).toHaveBeenCalled();
+    });
   });
 
   describe('setNegative', () => {
@@ -123,6 +159,14 @@ describe('CacheService', () => {
         CACHE_CONSTANTS.NEGATIVE_SENTINEL,
       );
     });
+
+    it('should handle Redis error gracefully', async () => {
+      redis.setex.mockRejectedValue(new Error('Redis connection failed'));
+
+      await service.setNegative('test-code');
+
+      expect(logger.warn).toHaveBeenCalled();
+    });
   });
 
   describe('invalidate', () => {
@@ -134,6 +178,14 @@ describe('CacheService', () => {
       expect(redis.del).toHaveBeenCalledWith(
         `${CACHE_CONSTANTS.KEY_PREFIX}test-code`,
       );
+    });
+
+    it('should handle Redis error gracefully', async () => {
+      redis.del.mockRejectedValue(new Error('Redis connection failed'));
+
+      await service.invalidate('test-code');
+
+      expect(logger.warn).toHaveBeenCalled();
     });
   });
 

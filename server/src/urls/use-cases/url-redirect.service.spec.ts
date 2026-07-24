@@ -227,5 +227,29 @@ describe('UrlRedirectService', () => {
         NotFoundException,
       );
     });
+
+    it('logs warning when analytics queue add fails', async () => {
+      validator.validate.mockReset();
+      const url: Url = {
+        id: '9',
+        originalUrl: 'https://analytics-fail.example.com',
+        shortCode: 'analytics-fail',
+        customAlias: null,
+        disabled: false,
+        expiresAt: null,
+      };
+      cache.get.mockResolvedValue(null);
+      repository.findByShortCodeOrAlias.mockResolvedValue(url);
+      analyticsQueue.add.mockRejectedValue(new Error('queue full'));
+
+      const result = await service.redirect('analytics-fail');
+
+      expect(result).toBe('https://analytics-fail.example.com');
+      // The redirect should succeed even if analytics enqueue fails
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ shortCode: 'analytics-fail' }),
+        'Failed to enqueue analytics',
+      );
+    });
   });
 });

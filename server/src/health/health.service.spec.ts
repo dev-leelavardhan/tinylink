@@ -52,4 +52,13 @@ describe('HealthService (unit)', () => {
       ServiceUnavailableException,
     );
   });
+
+  it('returns degraded when redis ping returns non-PONG', async () => {
+    prisma.$queryRaw.mockResolvedValue([{ '?column?': 1 }]);
+    redis.ping.mockResolvedValue('NOTPONG');
+
+    const result = await service.check();
+
+    expect(result).toEqual({ status: 'ok', db: 'up', redis: 'degraded' });
+  });
 });
