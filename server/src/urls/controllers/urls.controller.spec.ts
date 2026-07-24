@@ -31,8 +31,18 @@ describe('UrlsController (unit)', () => {
 
     urlsService.create.mockResolvedValue(response);
 
-    await expect(controller.create(dto)).resolves.toEqual(response);
-    expect(urlsService.create).toHaveBeenCalledWith(dto);
+    const req = {
+      ip: '192.168.1.1',
+      socket: { remoteAddress: '192.168.1.1' },
+      user: undefined,
+    } as unknown as Request & { user?: { userId: string } };
+
+    await expect(controller.create(dto, req)).resolves.toEqual(response);
+    expect(urlsService.create).toHaveBeenCalledWith(
+      dto,
+      undefined,
+      '192.168.1.1',
+    );
   });
 });
 

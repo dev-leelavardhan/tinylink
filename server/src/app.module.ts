@@ -13,6 +13,7 @@ import { RedisModule } from './redis/redis.module';
 import { HealthModule } from './health/health.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { UrlsModule } from './urls/urls.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { UrlsModule } from './urls/urls.module';
     // Feature modules (order matters for route precedence)
     HealthModule,
     AnalyticsModule,
+    UsersModule,
     UrlsModule,
   ],
   controllers: [AppController],

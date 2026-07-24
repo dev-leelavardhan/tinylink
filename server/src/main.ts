@@ -1,10 +1,21 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import express from 'express';
+
 import { AppModule } from './app.module';
 import { Logger } from 'nestjs-pino';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const expressApp = express();
+  // Trust proxy for correct req.ip behind reverse proxies (nginx, etc.)
+  expressApp.set('trust proxy', true);
+
+  const app = await NestFactory.create(
+    AppModule,
+    new ExpressAdapter(expressApp),
+    { bufferLogs: true },
+  );
 
   app.useLogger(app.get(Logger));
   app.enableShutdownHooks();

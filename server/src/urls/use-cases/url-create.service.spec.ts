@@ -9,6 +9,7 @@ import { UrlCacheService } from '../service/urls-cache.service';
 import { AliasValidatorService } from '../validators/alias-validator.service';
 import { UrlRepository } from '../repositories/url.repository';
 import { UrlMapper } from '../mappers/urls.mapper';
+import { RedisService } from '../../redis/service/redis.service';
 import { createLoggerMock } from '../../testing/mocks';
 import { CreateUrlDto } from '../dto/create-url.dto';
 import { type Url } from '../types';
@@ -45,6 +46,12 @@ describe('UrlCreateService', () => {
     toCached: jest.fn(),
   };
 
+  const redis = {
+    get: jest.fn().mockResolvedValue(null),
+    incr: jest.fn().mockResolvedValue(1),
+    expire: jest.fn().mockResolvedValue(1),
+  };
+
   const logger = createLoggerMock();
 
   beforeEach(async () => {
@@ -75,6 +82,7 @@ describe('UrlCreateService', () => {
         { provide: UrlCacheService, useValue: cache },
         { provide: UrlRepository, useValue: repository },
         { provide: UrlMapper, useValue: mapper },
+        { provide: RedisService, useValue: redis },
         { provide: PinoLogger, useValue: logger },
       ],
     }).compile();

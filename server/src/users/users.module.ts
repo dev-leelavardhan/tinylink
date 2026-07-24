@@ -1,0 +1,39 @@
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+
+import { AuthController } from './controllers/auth.controller';
+import { UsersController } from './controllers/users.controller';
+import { UserMapper } from './mappers/user.mapper';
+import { UserRepository } from './repositories/user.repository';
+import { UsersService } from './service/users.service';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { UserLoginService } from './use-cases/user-login.service';
+import { UserProfileService } from './use-cases/user-profile.service';
+import { UserRegisterService } from './use-cases/user-register.service';
+
+@Module({
+  imports: [PassportModule, JwtModule.register({})],
+
+  controllers: [AuthController, UsersController],
+
+  providers: [
+    // Infrastructure
+    JwtStrategy,
+
+    // Application (use-cases)
+    UsersService,
+    UserRegisterService,
+    UserLoginService,
+    UserProfileService,
+
+    // Persistence
+    UserRepository,
+
+    // Mapping
+    UserMapper,
+  ],
+
+  exports: [UsersService, UserRepository, JwtModule],
+})
+export class UsersModule {}

@@ -1,0 +1,46 @@
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+
+import { ZodValidationPipe } from '../../common/zod/common.validation';
+import { loginUserSchema, type LoginUserDto } from '../dto/login-user.dto';
+import {
+  refreshTokenSchema,
+  type RefreshTokenDto,
+} from '../dto/refresh-token.dto';
+import {
+  registerUserSchema,
+  type RegisterUserDto,
+} from '../dto/register-user.dto';
+import { UsersService } from '../service/users.service';
+import { type AuthTokens } from '../types';
+
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  async register(
+    @Body(new ZodValidationPipe(registerUserSchema))
+    dto: RegisterUserDto,
+  ): Promise<AuthTokens> {
+    return this.usersService.register(dto);
+  }
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  async login(
+    @Body(new ZodValidationPipe(loginUserSchema))
+    dto: LoginUserDto,
+  ): Promise<AuthTokens> {
+    return this.usersService.login(dto);
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(
+    @Body(new ZodValidationPipe(refreshTokenSchema))
+    dto: RefreshTokenDto,
+  ): Promise<{ accessToken: string }> {
+    return this.usersService.refresh(dto.refreshToken);
+  }
+}
