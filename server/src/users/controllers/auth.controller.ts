@@ -6,7 +6,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 import { ZodValidationPipe } from '../../common/zod/common.validation';
 import { loginUserSchema, type LoginUserDto } from '../dto/login-user.dto';
@@ -62,16 +62,18 @@ export class AuthController {
   }
 
   @Post('verify-email')
+  @Throttle({ default: { limit: 5, ttl: 600000 } }) // 5 requests per 10 minutes
   @HttpCode(HttpStatus.OK)
   async verifyEmail(
     @Body(new ZodValidationPipe(verifyEmailSchema))
     dto: VerifyEmailDto,
   ): Promise<{ message: string }> {
-    await this.usersService.verifyEmail(dto.userId, dto.otp);
+    await this.usersService.verifyEmail(dto.email, dto.otp);
     return { message: 'Email verified successfully' };
   }
 
   @Post('resend-verification')
+  @Throttle({ default: { limit: 3, ttl: 3600000 } }) // 3 requests per hour
   @HttpCode(HttpStatus.OK)
   async resendVerification(
     @Body(new ZodValidationPipe(resendVerificationSchema))

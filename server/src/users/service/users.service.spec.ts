@@ -106,10 +106,10 @@ describe('UsersService', () => {
     it('should call verifyEmailService.verify', async () => {
       verifyEmailService.verify.mockResolvedValue(undefined);
 
-      await service.verifyEmail('user-1', '123456');
+      await service.verifyEmail('test@example.com', '123456');
 
       expect(verifyEmailService.verify).toHaveBeenCalledWith(
-        'user-1',
+        'test@example.com',
         '123456',
       );
     });

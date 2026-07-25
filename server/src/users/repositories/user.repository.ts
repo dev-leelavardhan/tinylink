@@ -60,14 +60,20 @@ export class UserRepository {
     salt: string;
     expiresAt: Date;
   }) {
-    return this.prisma.verificationOtp.create({ data });
+    return this.prisma.verificationOtp.create({
+      data: {
+        ...data,
+        type: 'EMAIL_VERIFICATION',
+      },
+    });
   }
 
   findValidOtp(userId: string) {
     return this.prisma.verificationOtp.findFirst({
       where: {
         userId,
-        used: false,
+        type: 'EMAIL_VERIFICATION',
+        usedAt: null,
         expiresAt: { gt: new Date() },
       },
       orderBy: { createdAt: 'desc' },
@@ -78,9 +84,10 @@ export class UserRepository {
     return this.prisma.verificationOtp.updateMany({
       where: {
         userId,
-        used: false,
+        type: 'EMAIL_VERIFICATION',
+        usedAt: null,
       },
-      data: { used: true },
+      data: { usedAt: new Date() },
     });
   }
 

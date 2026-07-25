@@ -16,9 +16,16 @@ import { UserVerifyEmailService } from './use-cases/user-verify-email.service';
 import { UserResendVerificationService } from './use-cases/user-resend-verification.service';
 import { RedisModule } from '../redis/redis.module';
 import { MailerModule } from '../mailer/mailer.module';
+import { AuditModule } from '../common/audit/audit.module';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({}), RedisModule, MailerModule],
+  imports: [
+    PassportModule,
+    JwtModule.register({}),
+    RedisModule,
+    MailerModule,
+    AuditModule,
+  ],
 
   controllers: [AuthController, UsersController],
 

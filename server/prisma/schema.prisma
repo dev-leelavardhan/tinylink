@@ -30,6 +30,7 @@ model User {
 
   urls           Url[]
   verificationOtps VerificationOtp[]
+  auditLogs      AuditLog[]
 }
 
 model Url {
@@ -94,18 +95,55 @@ model Analytics {
   @@index([urlId, country])
 }
 
-model VerificationOtp {
-  id        String   @id @default(cuid())
-  userId    String
-  email     String
-  otpHash   String
-  salt      String   @default("")
-  expiresAt DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
+enum VerificationType {
+  EMAIL_VERIFICATION
+}
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model VerificationOtp {
+  id          String           @id @default(cuid())
+  userId      String
+  email       String
+  type        VerificationType @default(EMAIL_VERIFICATION)
+  otpHash     String
+  salt        String           @default("")
+  expiresAt   DateTime
+  usedAt      DateTime?
+  attempts    Int              @default(0)
+  resendCount Int              @default(0)
+  createdAt   DateTime         @default(now())
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([email, expiresAt])
+  @@index([userId, type])
+}
+
+enum AuditEvent {
+  OTP_GENERATED
+  OTP_RESENT
+  OTP_VERIFIED
+  OTP_EXPIRED
+  OTP_FAILED
+  OTP_RATE_LIMITED
+  OTP_MAX_ATTEMPTS
+  OTP_RESEND_COOLDOWN
+  EMAIL_VERIFICATION_SUCCESS
+  EMAIL_VERIFICATION_FAILED
+}
+
+model AuditLog {
+  id        String     @id @default(cuid())
+  userId    String?
+  event     AuditEvent
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime   @default(now())
+
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([event])
+  @@index([createdAt])
 }

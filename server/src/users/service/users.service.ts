@@ -36,8 +36,8 @@ export class UsersService {
     return this.profileService.getProfile(userId);
   }
 
-  verifyEmail(userId: string, otp: string): Promise<void> {
-    return this.verifyEmailService.verify(userId, otp);
+  verifyEmail(email: string, otp: string): Promise<void> {
+    return this.verifyEmailService.verify(email, otp);
   }
 
   resendVerification(email: string): Promise<void> {

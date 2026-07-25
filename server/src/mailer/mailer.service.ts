@@ -31,6 +31,9 @@ export class MailerService {
         user: this.config.getOrThrow<string>('MAILER_USER'),
         pass: this.config.getOrThrow<string>('MAILER_PASS'),
       },
+      connectionTimeout: 10000, // 10 seconds
+      greetingTimeout: 5000, // 5 seconds
+      socketTimeout: 10000, // 10 seconds
     });
   }
 
@@ -38,6 +41,17 @@ export class MailerService {
     const secureFromEnv = this.config.get<string>('MAILER_SECURE');
     if (secureFromEnv === undefined) return false;
     return secureFromEnv !== 'false';
+  }
+
+  private getFromAddress(): string {
+    const from = this.config.getOrThrow<string>('MAILER_FROM');
+    const name = this.config.get<string>('MAILER_NAME');
+
+    if (name) {
+      return `"${name}" <${from}>`;
+    }
+
+    return from;
   }
 
   async sendMail(options: SendMailOptions): Promise<void> {
@@ -48,10 +62,11 @@ export class MailerService {
 
     try {
       await this.transporter.sendMail({
-        from: this.config.getOrThrow<string>('MAILER_FROM'),
+        from: this.getFromAddress(),
         to: options.to,
         subject: options.subject,
         html: options.html,
+        text: options.text,
       });
 
       this.logger.info({ to: options.to }, MAILER_LOG_MESSAGES.SEND_COMPLETED);

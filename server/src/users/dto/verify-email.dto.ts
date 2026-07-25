@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const verifyEmailSchema = z.object({
-  userId: z.string().cuid(),
+  email: z.string().email().toLowerCase().trim(),
   otp: z.string().length(6).regex(/^\d+$/, 'OTP must be 6 digits'),
 });
 

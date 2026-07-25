@@ -82,18 +82,31 @@ export class UserRegisterService {
     email: string,
     otp: string,
   ): Promise<void> {
+    const expiryMinutes = USER_CONSTANTS.OTP_EXPIRY_SECONDS / 60;
+
     const html = `
       <h1>Verify your email</h1>
       <p>Your verification code is:</p>
       <h2>${otp}</h2>
-      <p>This code expires in ${USER_CONSTANTS.OTP_EXPIRY_SECONDS / 60} minutes.</p>
+      <p>This code expires in ${expiryMinutes} minutes.</p>
       <p>If you didn't create an account, you can safely ignore this email.</p>
     `;
+
+    const text = [
+      'Verify your email',
+      '',
+      `Your verification code is: ${otp}`,
+      '',
+      `This code expires in ${expiryMinutes} minutes.`,
+      '',
+      "If you didn't create an account, you can safely ignore this email.",
+    ].join('\n');
 
     await this.mailerService.sendMail({
       to: email,
       subject: 'Verify your email address',
       html,
+      text,
     });
   }
 

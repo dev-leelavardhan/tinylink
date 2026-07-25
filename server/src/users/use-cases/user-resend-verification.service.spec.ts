@@ -1,4 +1,3 @@
-import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -7,6 +6,7 @@ import { UserRepository } from '../repositories/user.repository';
 import { UserOtpService } from './user-otp.service';
 import { MailerService } from '../../mailer/mailer.service';
 import { createLoggerMock } from '../../testing/mocks';
+import { AuditService } from '../../common/audit/audit.service';
 
 describe('UserResendVerificationService', () => {
   let service: UserResendVerificationService;
@@ -23,6 +23,10 @@ describe('UserResendVerificationService', () => {
     sendMail: jest.fn().mockResolvedValue(undefined),
   };
 
+  const auditService = {
+    logOtpResent: jest.fn().mockResolvedValue(undefined),
+  };
+
   const logger = createLoggerMock();
 
   beforeEach(async () => {
@@ -34,6 +38,7 @@ describe('UserResendVerificationService', () => {
         { provide: UserRepository, useValue: repository },
         { provide: UserOtpService, useValue: otpService },
         { provide: MailerService, useValue: mailerService },
+        { provide: AuditService, useValue: auditService },
         { provide: PinoLogger, useValue: logger },
       ],
     }).compile();
@@ -65,15 +70,20 @@ describe('UserResendVerificationService', () => {
         subject: 'Verify your email address',
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         html: expect.stringContaining('123456'),
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        text: expect.stringContaining('123456'),
       });
     });
 
-    it('should throw NotFoundException if user not found', async () => {
+    it('should return silently if user not found (prevent email enumeration)', async () => {
       repository.findByEmail.mockResolvedValue(null);
 
-      await expect(service.resend('nonexistent@example.com')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.resend('nonexistent@example.com'),
+      ).resolves.toBeUndefined();
+
+      expect(otpService.resend).not.toHaveBeenCalled();
+      expect(mailerService.sendMail).not.toHaveBeenCalled();
     });
 
     it('should skip if email already verified', async () => {

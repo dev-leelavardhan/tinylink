@@ -160,7 +160,7 @@ describe('UserRepository', () => {
 
   describe('OTP methods', () => {
     describe('createOtp', () => {
-      it('should create an OTP record', async () => {
+      it('should create an OTP record with type EMAIL_VERIFICATION', async () => {
         const otpData = {
           userId: 'user-1',
           email: 'test@example.com',
@@ -171,13 +171,17 @@ describe('UserRepository', () => {
         prisma.verificationOtp.create.mockResolvedValue({
           id: 'otp-1',
           ...otpData,
+          type: 'EMAIL_VERIFICATION',
         });
 
         const result = await repository.createOtp(otpData);
 
         expect(result).toBeDefined();
         expect(prisma.verificationOtp.create).toHaveBeenCalledWith({
-          data: otpData,
+          data: {
+            ...otpData,
+            type: 'EMAIL_VERIFICATION',
+          },
         });
       });
     });
@@ -189,7 +193,8 @@ describe('UserRepository', () => {
           userId: 'user-1',
           otpHash: 'hashed-otp',
           email: 'test@example.com',
-          used: false,
+          type: 'EMAIL_VERIFICATION',
+          usedAt: null,
         };
         prisma.verificationOtp.findFirst.mockResolvedValue(expectedOtp);
 
@@ -208,14 +213,19 @@ describe('UserRepository', () => {
     });
 
     describe('markOtpUsed', () => {
-      it('should mark OTPs as used', async () => {
+      it('should mark OTPs as used with usedAt timestamp', async () => {
         prisma.verificationOtp.updateMany.mockResolvedValue({ count: 1 });
 
         await repository.markOtpUsed('user-1');
 
         expect(prisma.verificationOtp.updateMany).toHaveBeenCalledWith({
-          where: { userId: 'user-1', used: false },
-          data: { used: true },
+          where: {
+            userId: 'user-1',
+            type: 'EMAIL_VERIFICATION',
+            usedAt: null,
+          },
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          data: { usedAt: expect.any(Date) },
         });
       });
     });

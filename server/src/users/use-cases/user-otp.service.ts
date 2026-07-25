@@ -10,12 +10,14 @@ import {
 import { RedisService } from '../../redis/service/redis.service';
 import { UserRepository } from '../repositories/user.repository';
 import { generateOtp } from '../utils/otp.utils';
+import { AuditService } from '../../common/audit/audit.service';
 
 @Injectable()
 export class UserOtpService {
   constructor(
     private readonly redis: RedisService,
     private readonly userRepository: UserRepository,
+    private readonly auditService: AuditService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(UserOtpService.name);
@@ -58,6 +60,7 @@ export class UserOtpService {
     }
 
     this.logger.info({ userId }, USER_LOG_MESSAGES.OTP_GENERATED);
+    await this.auditService.logOtpGenerated(userId);
 
     return rawOtp;
   }
@@ -67,6 +70,7 @@ export class UserOtpService {
     const isRateLimited = await this.checkRateLimit(userId);
     if (isRateLimited) {
       this.logger.warn({ userId }, USER_ERROR_MESSAGES.OTP_RATE_LIMITED);
+      await this.auditService.logOtpRateLimited(userId);
       return null;
     }
 
@@ -74,6 +78,7 @@ export class UserOtpService {
     const attemptsOk = await this.checkAttempts(userId);
     if (!attemptsOk) {
       this.logger.warn({ userId }, USER_LOG_MESSAGES.OTP_MAX_ATTEMPTS_REACHED);
+      await this.auditService.logOtpMaxAttempts(userId);
       return null;
     }
 
@@ -90,8 +95,10 @@ export class UserOtpService {
       await this.deleteOtp(userId);
       await this.incrementAttempts(userId, true);
       this.logger.info({ userId }, USER_LOG_MESSAGES.OTP_VERIFIED);
+      await this.auditService.logOtpVerified(userId);
     } else {
       await this.incrementAttempts(userId, false);
+      await this.auditService.logOtpFailed(userId);
     }
 
     return result;
@@ -104,6 +111,7 @@ export class UserOtpService {
       const exists = await this.redis.get(cooldownKey);
       if (exists) {
         this.logger.warn({ userId }, USER_ERROR_MESSAGES.OTP_RESEND_COOLDOWN);
+        await this.auditService.logOtpResendCooldown(userId);
         return null;
       }
     } catch {
@@ -114,6 +122,7 @@ export class UserOtpService {
     const isRateLimited = await this.checkRateLimit(userId);
     if (isRateLimited) {
       this.logger.warn({ userId }, USER_ERROR_MESSAGES.OTP_RATE_LIMITED);
+      await this.auditService.logOtpRateLimited(userId);
       return null;
     }
 
@@ -138,6 +147,7 @@ export class UserOtpService {
     }
 
     this.logger.info({ userId }, USER_LOG_MESSAGES.OTP_RESEND_SUCCESS);
+    await this.auditService.logOtpResent(userId);
 
     return otp;
   }

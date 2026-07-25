@@ -5,6 +5,7 @@ import { UserOtpService } from './user-otp.service';
 import { RedisService } from '../../redis/service/redis.service';
 import { UserRepository } from '../repositories/user.repository';
 import { createLoggerMock } from '../../testing/mocks';
+import { AuditService } from '../../common/audit/audit.service';
 
 describe('UserOtpService', () => {
   let service: UserOtpService;
@@ -22,6 +23,17 @@ describe('UserOtpService', () => {
     markOtpUsed: jest.fn().mockResolvedValue({}),
   };
 
+  const auditService = {
+    logOtpGenerated: jest.fn().mockResolvedValue(undefined),
+    logOtpResent: jest.fn().mockResolvedValue(undefined),
+    logOtpVerified: jest.fn().mockResolvedValue(undefined),
+    logOtpFailed: jest.fn().mockResolvedValue(undefined),
+    logOtpExpired: jest.fn().mockResolvedValue(undefined),
+    logOtpRateLimited: jest.fn().mockResolvedValue(undefined),
+    logOtpMaxAttempts: jest.fn().mockResolvedValue(undefined),
+    logOtpResendCooldown: jest.fn().mockResolvedValue(undefined),
+  };
+
   const logger = createLoggerMock();
 
   beforeEach(async () => {
@@ -34,6 +46,7 @@ describe('UserOtpService', () => {
         UserOtpService,
         { provide: RedisService, useValue: redis },
         { provide: UserRepository, useValue: repository },
+        { provide: AuditService, useValue: auditService },
         { provide: PinoLogger, useValue: logger },
       ],
     }).compile();

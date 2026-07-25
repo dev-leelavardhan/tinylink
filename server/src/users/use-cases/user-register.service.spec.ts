@@ -100,6 +100,8 @@ describe('UserRegisterService', () => {
         subject: 'Verify your email address',
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         html: expect.stringContaining('123456'),
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        text: expect.stringContaining('123456'),
       });
     });
 

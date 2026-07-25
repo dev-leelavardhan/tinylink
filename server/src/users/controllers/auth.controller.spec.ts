@@ -80,12 +80,15 @@ describe('AuthController', () => {
       usersService.verifyEmail.mockResolvedValue(undefined);
 
       const result = await controller.verifyEmail({
-        userId: 'user-1',
+        email: 'test@example.com',
         otp: '123456',
       });
 
       expect(result).toEqual({ message: 'Email verified successfully' });
-      expect(usersService.verifyEmail).toHaveBeenCalledWith('user-1', '123456');
+      expect(usersService.verifyEmail).toHaveBeenCalledWith(
+        'test@example.com',
+        '123456',
+      );
     });
   });
 

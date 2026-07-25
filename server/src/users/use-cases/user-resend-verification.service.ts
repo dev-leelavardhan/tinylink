@@ -1,13 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import {
-  USER_ERROR_MESSAGES,
-  USER_LOG_MESSAGES,
-} from '../constants/user.constants';
+import { USER_LOG_MESSAGES } from '../constants/user.constants';
 import { UserRepository } from '../repositories/user.repository';
 import { UserOtpService } from './user-otp.service';
 import { MailerService } from '../../mailer/mailer.service';
+import { AuditService } from '../../common/audit/audit.service';
 
 @Injectable()
 export class UserResendVerificationService {
@@ -15,6 +13,7 @@ export class UserResendVerificationService {
     private readonly userRepository: UserRepository,
     private readonly otpService: UserOtpService,
     private readonly mailerService: MailerService,
+    private readonly auditService: AuditService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(UserResendVerificationService.name);
@@ -26,7 +25,9 @@ export class UserResendVerificationService {
     const user = await this.userRepository.findByEmail(email);
 
     if (!user) {
-      throw new NotFoundException(USER_ERROR_MESSAGES.USER_NOT_FOUND);
+      // Generic response to prevent email enumeration
+      this.logger.info('Resend verification requested for non-existent email');
+      return;
     }
 
     if (user.emailVerified) {
@@ -63,10 +64,21 @@ export class UserResendVerificationService {
       <p>If you didn't request this, you can safely ignore this email.</p>
     `;
 
+    const text = [
+      'Verify your email',
+      '',
+      `Your verification code is: ${otp}`,
+      '',
+      'This code expires in 10 minutes.',
+      '',
+      "If you didn't request this, you can safely ignore this email.",
+    ].join('\n');
+
     await this.mailerService.sendMail({
       to: email,
       subject: 'Verify your email address',
       html,
+      text,
     });
   }
 }
