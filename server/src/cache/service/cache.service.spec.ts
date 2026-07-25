@@ -117,6 +117,7 @@ describe('CacheService', () => {
         disabled: false,
         expiresAt: null,
         lastAccessedAt: null,
+        deletedAt: null,
       };
 
       await service.set('test-code', data);
@@ -139,6 +140,7 @@ describe('CacheService', () => {
         disabled: false,
         expiresAt: null,
         lastAccessedAt: null,
+        deletedAt: null,
       };
 
       await service.set('test-code', data);

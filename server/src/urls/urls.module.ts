@@ -18,6 +18,8 @@ import {
 } from './controllers/urls.controller';
 import { QrController } from './controllers/qr.controller';
 
+// NOTE: UrlsModule imports UsersModule for JwtAuthOptionalGuard.
+// TODO: Extract guards to shared AuthModule to reduce coupling.
 @Module({
   imports: [ShortCodeModule, AnalyticsModule, CacheModule, UsersModule],
   controllers: [UrlsController, RedirectController, QrController],

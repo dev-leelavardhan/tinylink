@@ -39,6 +39,17 @@ export const envSchema = z
     IP_HASH_SALT: z.string().min(16),
 
     GEOLITE2_DB_PATH: z.string().optional(),
+
+    // CORS configuration
+    CORS_ORIGIN: z.string().optional(),
+
+    // Mailer configuration
+    MAILER_HOST: z.string().optional(),
+    MAILER_PORT: z.coerce.number().int().default(587),
+    MAILER_SECURE: z.enum(['true', 'false']).default('false'),
+    MAILER_USER: z.string().optional(),
+    MAILER_PASS: z.string().optional(),
+    MAILER_FROM: z.string().email().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.SHORT_CODE_STRATEGY === 'hashids' && !env.SHORT_CODE_HASHIDS_SALT) {

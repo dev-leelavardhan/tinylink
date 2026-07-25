@@ -45,7 +45,7 @@ export class UrlCreateService {
     ip?: string,
   ): Promise<CreateUrlResponseDto> {
     if (!userId && ip) {
-      await this.checkAnonymousRateLimit(ip);
+      await this.checkAndIncrementAnonymousRateLimit(ip);
     }
 
     const strategy = this.shortCodeGenerator.getStrategy();
@@ -82,10 +82,6 @@ export class UrlCreateService {
           strategy,
           ...(userId ? { user: { connect: { id: userId } } } : {}),
         });
-
-        if (!userId && ip) {
-          await this.incrementAnonymousRateLimit(ip);
-        }
 
         const cachedUrl = this.urlMapper.toCached(url);
         await this.cache.set(shortCode, cachedUrl);
@@ -157,22 +153,14 @@ export class UrlCreateService {
     );
   }
 
-  private async checkAnonymousRateLimit(ip: string): Promise<void> {
-    const key = `${USER_CONSTANTS.RATE_LIMIT_KEY_PREFIX}${ip}`;
-    const count = await this.redis.get(key);
-    if (
-      count &&
-      Number.parseInt(count, 10) >= USER_CONSTANTS.ANONYMOUS_URL_LIMIT
-    ) {
-      throw new ForbiddenException(USER_ERROR_MESSAGES.FREE_LIMIT_REACHED);
-    }
-  }
-
-  private async incrementAnonymousRateLimit(ip: string): Promise<void> {
+  private async checkAndIncrementAnonymousRateLimit(ip: string): Promise<void> {
     const key = `${USER_CONSTANTS.RATE_LIMIT_KEY_PREFIX}${ip}`;
     const count = await this.redis.incr(key);
     if (count === 1) {
       await this.redis.expire(key, USER_CONSTANTS.RATE_LIMIT_TTL_SECONDS);
+    }
+    if (count > USER_CONSTANTS.ANONYMOUS_URL_LIMIT) {
+      throw new ForbiddenException(USER_ERROR_MESSAGES.FREE_LIMIT_REACHED);
     }
   }
 }

@@ -36,8 +36,8 @@ export class MailerService {
 
   getSmtpSecure(): boolean {
     const secureFromEnv = this.config.get<string>('MAILER_SECURE');
-    const parseSecure = secureFromEnv === 'false' ? false : true;
-    return parseSecure;
+    if (secureFromEnv === undefined) return false;
+    return secureFromEnv !== 'false';
   }
 
   async sendMail(options: SendMailOptions): Promise<void> {

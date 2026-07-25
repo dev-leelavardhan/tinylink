@@ -24,7 +24,7 @@ export class AnalyticsClickService implements OnModuleInit {
     this.logger.setContext(AnalyticsClickService.name);
 
     this.ipSalt = this.config.getOrThrow<string>('IP_HASH_SALT');
-    this.geoLiteDbPath = this.config.getOrThrow<string>('GEOLITE2_DB_PATH');
+    this.geoLiteDbPath = this.config.get<string>('GEOLITE2_DB_PATH', '');
   }
 
   async onModuleInit(): Promise<void> {

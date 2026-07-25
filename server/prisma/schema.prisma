@@ -99,6 +99,7 @@ model VerificationOtp {
   userId    String
   email     String
   otpHash   String
+  salt      String   @default("")
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())

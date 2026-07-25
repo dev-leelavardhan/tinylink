@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 
 import {
   USER_CONSTANTS,
@@ -23,7 +23,8 @@ export class UserOtpService {
 
   async generate(userId: string, email: string): Promise<string> {
     const rawOtp = generateOtp(USER_CONSTANTS.OTP_LENGTH);
-    const hashedOtp = this.hashOtp(rawOtp);
+    const salt = randomBytes(16).toString('hex');
+    const hashedOtp = this.hashOtp(rawOtp, salt);
 
     const expiresAt = new Date(
       Date.now() + USER_CONSTANTS.OTP_EXPIRY_SECONDS * 1000,
@@ -34,6 +35,7 @@ export class UserOtpService {
       const key = `${USER_CONSTANTS.OTP_KEY_PREFIX}${userId}`;
       const value = JSON.stringify({
         hashedOtp,
+        salt,
         email,
         expiresAt: expiresAt.toISOString(),
       });
@@ -48,6 +50,7 @@ export class UserOtpService {
         userId,
         email,
         otpHash: hashedOtp,
+        salt,
         expiresAt,
       });
     } catch (err: unknown) {
@@ -74,14 +77,12 @@ export class UserOtpService {
       return null;
     }
 
-    const inputHash = this.hashOtp(otp);
-
     // Try Redis first (fast path)
-    let result = await this.verifyFromRedis(userId, inputHash);
+    let result = await this.verifyFromRedis(userId, otp);
 
     // Fallback to DB if Redis fails or no result
     if (!result) {
-      result = await this.verifyFromDb(userId, inputHash);
+      result = await this.verifyFromDb(userId, otp);
     }
 
     if (result) {
@@ -143,7 +144,7 @@ export class UserOtpService {
 
   private async verifyFromRedis(
     userId: string,
-    inputHash: string,
+    otp: string,
   ): Promise<{ email: string } | null> {
     try {
       const key = `${USER_CONSTANTS.OTP_KEY_PREFIX}${userId}`;
@@ -151,11 +152,13 @@ export class UserOtpService {
 
       if (!raw) return null;
 
-      const { hashedOtp, email } = JSON.parse(raw) as {
+      const { hashedOtp, salt, email } = JSON.parse(raw) as {
         hashedOtp: string;
+        salt: string;
         email: string;
       };
 
+      const inputHash = this.hashOtp(otp, salt);
       if (inputHash !== hashedOtp) return null;
 
       return { email };
@@ -170,13 +173,14 @@ export class UserOtpService {
 
   private async verifyFromDb(
     userId: string,
-    inputHash: string,
+    otp: string,
   ): Promise<{ email: string } | null> {
     try {
       const otpRecord = await this.userRepository.findValidOtp(userId);
 
       if (!otpRecord) return null;
 
+      const inputHash = this.hashOtp(otp, otpRecord.salt);
       if (otpRecord.otpHash !== inputHash) return null;
 
       return { email: otpRecord.email };
@@ -187,19 +191,19 @@ export class UserOtpService {
   }
 
   private async deleteOtp(userId: string): Promise<void> {
-    // Delete from Redis
-    try {
-      const key = `${USER_CONSTANTS.OTP_KEY_PREFIX}${userId}`;
-      await this.redis.del(key);
-    } catch {
-      // Redis unavailable — DB record will expire naturally
-    }
-
-    // Mark as used in DB
+    // Mark as used in DB FIRST (prevents reuse via Redis fallback)
     try {
       await this.userRepository.markOtpUsed(userId);
     } catch (err: unknown) {
       this.logger.error({ err, userId }, 'Failed to mark OTP as used in DB');
+    }
+
+    // Then delete from Redis
+    try {
+      const key = `${USER_CONSTANTS.OTP_KEY_PREFIX}${userId}`;
+      await this.redis.del(key);
+    } catch {
+      // Redis unavailable — DB record already marked as used
     }
   }
 
@@ -224,24 +228,14 @@ export class UserOtpService {
     const rateLimitKey = `otp:ratelimit:${userId}`;
 
     try {
-      const current = await this.redis.get(rateLimitKey);
-      const count = current ? parseInt(current, 10) : 0;
-
-      if (count >= USER_CONSTANTS.OTP_MAX_RESEND_PER_WINDOW) {
-        return true; // Rate limited
-      }
-
-      if (count === 0) {
-        await this.redis.setex(
+      const count = await this.redis.incr(rateLimitKey);
+      if (count === 1) {
+        await this.redis.expire(
           rateLimitKey,
           USER_CONSTANTS.OTP_RESEND_WINDOW_SECONDS,
-          '1',
         );
-      } else {
-        await this.redis.incr(rateLimitKey);
       }
-
-      return false;
+      return count > USER_CONSTANTS.OTP_MAX_RESEND_PER_WINDOW;
     } catch {
       // Redis unavailable — skip rate limiting (degrade gracefully)
       return false;
@@ -273,18 +267,13 @@ export class UserOtpService {
         // Delete attempts on success
         await this.redis.del(attemptsKey);
       } else {
-        // Increment on failure
-        const current = await this.redis.get(attemptsKey);
-        const count = current ? parseInt(current, 10) : 0;
-
-        if (count === 0) {
-          await this.redis.setex(
+        // Increment on failure (atomic)
+        const count = await this.redis.incr(attemptsKey);
+        if (count === 1) {
+          await this.redis.expire(
             attemptsKey,
             USER_CONSTANTS.OTP_EXPIRY_SECONDS,
-            '1',
           );
-        } else {
-          await this.redis.incr(attemptsKey);
         }
       }
     } catch {
@@ -302,7 +291,7 @@ export class UserOtpService {
     }
   }
 
-  private hashOtp(otp: string): string {
-    return createHash('sha256').update(otp).digest('hex');
+  private hashOtp(otp: string, salt: string): string {
+    return createHash('sha256').update(`${otp}:${salt}`).digest('hex');
   }
 }

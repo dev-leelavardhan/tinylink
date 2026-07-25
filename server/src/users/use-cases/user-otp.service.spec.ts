@@ -62,6 +62,8 @@ describe('UserOtpService', () => {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         otpHash: expect.any(String),
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        salt: expect.any(String),
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         expiresAt: expect.any(Date),
       });
     });
@@ -113,12 +115,15 @@ describe('UserOtpService', () => {
     it('should fallback to DB if Redis fails', async () => {
       const generatedOtp = await service.generate('user-1', 'test@example.com');
 
-      // Get the hashed OTP from the stored value
+      // Get the stored value from Redis
       const storedValue = redis.setex.mock.calls.find(
         (call: unknown[]) => call[0] === 'otp:verify:user-1',
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       )![2] as string;
-      const { hashedOtp } = JSON.parse(storedValue) as { hashedOtp: string };
+      const { hashedOtp, salt } = JSON.parse(storedValue) as {
+        hashedOtp: string;
+        salt: string;
+      };
 
       // Redis fails for OTP lookup
       redis.get.mockImplementation((key: string) => {
@@ -129,9 +134,10 @@ describe('UserOtpService', () => {
         return Promise.resolve(null);
       });
 
-      // DB has the record
+      // DB has the record with correct hash and salt
       repository.findValidOtp.mockResolvedValueOnce({
         otpHash: hashedOtp,
+        salt,
         email: 'test@example.com',
       });
 
@@ -181,16 +187,14 @@ describe('UserOtpService', () => {
         if (key === 'otp:attempts:user-1') return Promise.resolve(null);
         return Promise.resolve(null);
       });
+      redis.incr.mockResolvedValueOnce(1); // rate limit
+      redis.incr.mockResolvedValueOnce(1); // attempts
       repository.findValidOtp.mockResolvedValueOnce(null);
 
       await service.verify('user-1', '000000');
 
-      // Should have tried to set/increment attempts
-      expect(redis.setex).toHaveBeenCalledWith(
-        'otp:attempts:user-1',
-        expect.any(Number),
-        '1',
-      );
+      // Should have tried to increment attempts
+      expect(redis.incr).toHaveBeenCalledWith('otp:attempts:user-1');
     });
 
     it('should block after max attempts', async () => {
@@ -199,6 +203,7 @@ describe('UserOtpService', () => {
         if (key === 'otp:attempts:user-1') return Promise.resolve('5');
         return Promise.resolve(null);
       });
+      redis.incr.mockResolvedValueOnce(1); // rate limit
       repository.findValidOtp.mockResolvedValueOnce(null);
 
       const result = await service.verify('user-1', '123456');
@@ -248,9 +253,9 @@ describe('UserOtpService', () => {
     it('should respect rate limiting', async () => {
       redis.get.mockImplementation((key: string) => {
         if (key === 'otp:cooldown:user-1') return Promise.resolve(null);
-        if (key === 'otp:ratelimit:user-1') return Promise.resolve('3');
         return Promise.resolve(null);
       });
+      redis.incr.mockResolvedValueOnce(4); // exceeds limit of 3
 
       const result = await service.resend('user-1', 'test@example.com');
 

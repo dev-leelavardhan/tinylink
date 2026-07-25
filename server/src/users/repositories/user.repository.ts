@@ -57,6 +57,7 @@ export class UserRepository {
     userId: string;
     email: string;
     otpHash: string;
+    salt: string;
     expiresAt: Date;
   }) {
     return this.prisma.verificationOtp.create({ data });

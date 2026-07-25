@@ -47,6 +47,7 @@ describe('UrlRepository', () => {
       expect(prisma.url.findFirst).toHaveBeenCalledWith({
         where: {
           OR: [{ customAlias: 'my-alias' }, { shortCode: 'my-alias' }],
+          deletedAt: null,
         },
       });
     });
@@ -79,6 +80,7 @@ describe('UrlRepository', () => {
         where: {
           originalUrl: 'https://example.com',
           strategy: 'random',
+          deletedAt: null,
         },
       });
     });
@@ -95,6 +97,7 @@ describe('UrlRepository', () => {
       expect(prisma.url.findFirst).toHaveBeenCalledWith({
         where: {
           OR: [{ shortCode: 'abc' }, { customAlias: 'abc' }],
+          deletedAt: null,
         },
       });
     });

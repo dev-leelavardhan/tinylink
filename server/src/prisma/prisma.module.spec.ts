@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigModule } from '@nestjs/config';
 
 import { PrismaModule } from './prisma.module';
 import { PrismaService } from './prisma.service';
@@ -10,7 +11,10 @@ describe('PrismaModule (unit)', () => {
     process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
 
     module = await Test.createTestingModule({
-      imports: [PrismaModule],
+      imports: [
+        ConfigModule.forRoot({ isGlobal: true, cache: true }),
+        PrismaModule,
+      ],
     }).compile();
   });
 

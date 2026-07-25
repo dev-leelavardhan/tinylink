@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
 import { RedirectController } from './urls.controller';
 import { UrlsService } from '../service/urls.service';
@@ -30,9 +30,18 @@ describe('RedirectController (unit)', () => {
       socket: { remoteAddress: '127.0.0.1' },
     } as unknown as Request;
 
-    const result = await controller.redirect('abc123', mockReq);
+    const mockRes = {
+      setHeader: jest.fn(),
+    } as unknown as Response;
+
+    const result = await controller.redirect('abc123', mockReq, mockRes);
 
     expect(result).toEqual({ url: 'https://destination.example' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(mockRes.setHeader).toHaveBeenCalledWith(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate',
+    );
     expect(urlsService.redirect).toHaveBeenCalledWith('abc123', {
       userAgent: 'test-agent',
       referrer: 'https://example.com',

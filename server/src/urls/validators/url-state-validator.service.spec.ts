@@ -19,6 +19,7 @@ describe('UrlStateValidatorService', () => {
       disabled: false,
       expiresAt: null,
       lastAccessedAt: null,
+      deletedAt: null,
     };
     expect(() => service.validate(url)).not.toThrow();
   });
@@ -31,6 +32,7 @@ describe('UrlStateValidatorService', () => {
       customAlias: null,
       disabled: true,
       expiresAt: null,
+      deletedAt: null,
     };
     expect(() => service.validate(url)).toThrow(GoneException);
   });
@@ -43,6 +45,7 @@ describe('UrlStateValidatorService', () => {
       customAlias: null,
       disabled: false,
       expiresAt: new Date('2020-01-01'),
+      deletedAt: null,
     };
     expect(() => service.validate(url)).toThrow(GoneException);
   });
@@ -56,6 +59,7 @@ describe('UrlStateValidatorService', () => {
       customAlias: null,
       disabled: false,
       expiresAt: futureDate,
+      deletedAt: null,
     };
     expect(() => service.validate(url)).not.toThrow();
   });
@@ -69,6 +73,7 @@ describe('UrlStateValidatorService', () => {
       disabled: false,
       expiresAt: '2020-01-01T00:00:00.000Z',
       lastAccessedAt: null,
+      deletedAt: null,
     };
     expect(() => service.validate(url)).toThrow(GoneException);
   });

@@ -49,7 +49,7 @@ export class AnalyticsReadService {
     const totalClicks = Number(total);
 
     return {
-      clicks: clicks.map((click) => this.mapper.toClickResponse(click)),
+      clicks,
       total: totalClicks,
       page,
       limit,

@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigModule } from '@nestjs/config';
 
 import { PrismaModule } from '../../src/prisma/prisma.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
@@ -10,7 +11,10 @@ describe('PrismaService (integration)', () => {
 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
-      imports: [PrismaModule],
+      imports: [
+        ConfigModule.forRoot({ isGlobal: true, cache: true }),
+        PrismaModule,
+      ],
     }).compile();
 
     prisma = moduleRef.get(PrismaService);

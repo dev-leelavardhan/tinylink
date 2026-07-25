@@ -3,12 +3,6 @@ import { PrismaService } from '../../src/prisma/prisma.service';
 
 const ANALYTICS_QUEUE_NAME = 'analytics';
 
-export async function truncateUrls(prisma: PrismaService): Promise<void> {
-  await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "Url" RESTART IDENTITY CASCADE',
-  );
-}
-
 export async function resetShortCodeCounter(
   prisma: PrismaService,
 ): Promise<void> {
@@ -33,6 +27,8 @@ export async function flushAnalyticsQueue(redisUrl: string): Promise<void> {
 }
 
 export async function cleanDatabase(prisma: PrismaService): Promise<void> {
-  await truncateUrls(prisma);
+  await prisma.$executeRawUnsafe(
+    'TRUNCATE TABLE "Analytics", "VerificationOtp", "User", "Url" RESTART IDENTITY CASCADE',
+  );
   await resetShortCodeCounter(prisma);
 }

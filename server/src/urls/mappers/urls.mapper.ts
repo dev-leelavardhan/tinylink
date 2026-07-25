@@ -28,6 +28,7 @@ export class UrlMapper {
       disabled: url.disabled,
       expiresAt: url.expiresAt?.toISOString() ?? null,
       lastAccessedAt: new Date().toISOString(),
+      deletedAt: url.deletedAt?.toISOString() ?? null,
     };
   }
 }

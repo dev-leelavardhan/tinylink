@@ -25,6 +25,7 @@ describe('AnalyticsClickService', () => {
   };
   let config: {
     getOrThrow: jest.Mock;
+    get: jest.Mock;
   };
   let logger: {
     setContext: jest.Mock;
@@ -43,9 +44,14 @@ describe('AnalyticsClickService', () => {
     config = {
       getOrThrow: jest.fn().mockImplementation((key: string) => {
         if (key === 'IP_HASH_SALT') return 'test-salt';
-        if (key === 'GEOLITE2_DB_PATH') return './test.mmdb';
         return null;
       }),
+      get: jest
+        .fn()
+        .mockImplementation((key: string, defaultValue: unknown) => {
+          if (key === 'GEOLITE2_DB_PATH') return './test.mmdb';
+          return defaultValue;
+        }),
     };
 
     logger = {

@@ -6,6 +6,10 @@ import { URL_REDIRECT_ERROR_MESSAGES } from '../constants/url.constants';
 @Injectable()
 export class UrlStateValidatorService {
   validate(url: CachedUrl | Url): void {
+    if (url.deletedAt) {
+      throw new GoneException(URL_REDIRECT_ERROR_MESSAGES.URL_DELETED);
+    }
+
     if (url.disabled) {
       throw new GoneException(URL_REDIRECT_ERROR_MESSAGES.URL_DISABLED);
     }

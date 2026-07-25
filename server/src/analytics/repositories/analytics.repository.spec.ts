@@ -14,6 +14,7 @@ describe('AnalyticsRepository', () => {
     };
     url: {
       update: jest.Mock;
+      updateMany: jest.Mock;
       deleteMany: jest.Mock;
     };
     $queryRaw: jest.Mock;
@@ -30,6 +31,7 @@ describe('AnalyticsRepository', () => {
       },
       url: {
         update: jest.fn(),
+        updateMany: jest.fn(),
         deleteMany: jest.fn(),
       },
       $queryRaw: jest.fn(),
@@ -226,15 +228,20 @@ describe('AnalyticsRepository', () => {
   });
 
   describe('deleteExpiredUrls', () => {
-    it('deletes expired URLs', async () => {
-      prisma.url.deleteMany.mockResolvedValue({ count: 5 });
+    it('soft-deletes expired URLs', async () => {
+      prisma.url.updateMany.mockResolvedValue({ count: 5 });
 
       const result = await repository.deleteExpiredUrls();
 
-      expect(prisma.url.deleteMany).toHaveBeenCalledWith({
+      expect(prisma.url.updateMany).toHaveBeenCalledWith({
         where: {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           expiresAt: { lt: expect.any(Date) },
+          deletedAt: null,
+        },
+        data: {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          deletedAt: expect.any(Date),
         },
       });
       expect(result.count).toBe(5);

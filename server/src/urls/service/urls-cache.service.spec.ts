@@ -22,6 +22,7 @@ describe('UrlCacheService', () => {
     disabled: false,
     expiresAt: null,
     lastAccessedAt: null,
+    deletedAt: null,
   };
 
   beforeEach(async () => {

@@ -1,4 +1,12 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 import { ZodValidationPipe } from '../../common/zod/common.validation';
 import { loginUserSchema, type LoginUserDto } from '../dto/login-user.dto';
@@ -14,10 +22,15 @@ import {
   resendVerificationSchema,
   type ResendVerificationDto,
 } from '../dto/resend-verification.dto';
+import {
+  verifyEmailSchema,
+  type VerifyEmailDto,
+} from '../dto/verify-email.dto';
 import { UsersService } from '../service/users.service';
 import { type AuthTokens } from '../types';
 
 @Controller('auth')
+@UseGuards(ThrottlerGuard)
 export class AuthController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -51,9 +64,10 @@ export class AuthController {
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   async verifyEmail(
-    @Body() body: { userId: string; otp: string },
+    @Body(new ZodValidationPipe(verifyEmailSchema))
+    dto: VerifyEmailDto,
   ): Promise<{ message: string }> {
-    await this.usersService.verifyEmail(body.userId, body.otp);
+    await this.usersService.verifyEmail(dto.userId, dto.otp);
     return { message: 'Email verified successfully' };
   }
 

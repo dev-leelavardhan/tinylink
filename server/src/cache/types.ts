@@ -6,4 +6,5 @@ export interface CachedUrl {
   disabled: boolean;
   expiresAt: string | null; // ISO 8601 string
   lastAccessedAt: string | null;
+  deletedAt: string | null; // ISO 8601 string
 }

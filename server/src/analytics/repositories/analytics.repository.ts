@@ -114,11 +114,15 @@ export class AnalyticsRepository {
   }
 
   deleteExpiredUrls() {
-    return this.prisma.url.deleteMany({
+    return this.prisma.url.updateMany({
       where: {
         expiresAt: {
           lt: new Date(),
         },
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
       },
     });
   }

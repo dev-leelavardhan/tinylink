@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 
 import configuration from '../../src/config/configuration';
@@ -24,6 +25,7 @@ describe('UrlsService (integration)', () => {
           cache: true,
           load: [configuration],
         }),
+        ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
         LoggerModule.forRoot({ pinoHttp: { level: 'silent' } }),
         PrismaModule,
         RedisModule,

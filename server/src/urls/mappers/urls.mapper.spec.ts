@@ -25,6 +25,7 @@ describe('UrlMapper', () => {
         customAlias: null,
         disabled: false,
         expiresAt: null,
+        deletedAt: null,
       };
 
       const result = mapper.toResponse(url);
@@ -48,6 +49,7 @@ describe('UrlMapper', () => {
         customAlias: 'my-alias',
         disabled: false,
         expiresAt,
+        deletedAt: null,
       };
 
       const result = mapper.toCached(url);
@@ -69,6 +71,7 @@ describe('UrlMapper', () => {
         customAlias: null,
         disabled: true,
         expiresAt: null,
+        deletedAt: null,
       };
 
       const result = mapper.toCached(url);

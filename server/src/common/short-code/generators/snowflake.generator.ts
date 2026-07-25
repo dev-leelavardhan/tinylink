@@ -75,6 +75,7 @@ export class SnowflakeGenerator implements ShortCodeGenerator {
   private waitNextMillis(lastTimestamp: bigint): bigint {
     let timestamp = this.currentTimestamp();
     while (timestamp <= lastTimestamp) {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1);
       timestamp = this.currentTimestamp();
     }
     return timestamp;

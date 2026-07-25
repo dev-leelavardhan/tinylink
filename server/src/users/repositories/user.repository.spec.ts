@@ -165,6 +165,7 @@ describe('UserRepository', () => {
           userId: 'user-1',
           email: 'test@example.com',
           otpHash: 'hashed-otp',
+          salt: 'test-salt',
           expiresAt: new Date(),
         };
         prisma.verificationOtp.create.mockResolvedValue({

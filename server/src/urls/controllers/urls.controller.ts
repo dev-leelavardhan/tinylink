@@ -8,9 +8,10 @@ import {
   Post,
   Redirect,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
 import { ZodValidationPipe } from '../../common/zod/common.validation';
 import { createUrlSchema, type CreateUrlDto } from '../dto/create-url.dto';
@@ -42,7 +43,12 @@ export class RedirectController {
 
   @Get(':shortCode')
   @Redirect(undefined, HttpStatus.FOUND)
-  async redirect(@Param('shortCode') shortCode: string, @Req() req: Request) {
+  async redirect(
+    @Param('shortCode') shortCode: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     const ip = req.ip ?? (req.socket ? req.socket.remoteAddress : undefined);
     const url = await this.urlsService.redirect(shortCode, {
       userAgent: req.headers['user-agent'] ?? '',

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 
 import { UsersModule } from './users.module';
@@ -44,6 +45,7 @@ describe('UsersModule', () => {
     module = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, cache: true }),
+        ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
         LoggerModule.forRoot({
           pinoHttp: { transport: { target: 'pino-pretty' } },
         }),

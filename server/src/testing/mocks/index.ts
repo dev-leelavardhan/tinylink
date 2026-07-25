@@ -7,6 +7,7 @@ export type PrismaMock = {
   url: {
     findFirst: jest.Mock;
     create: jest.Mock;
+    updateMany: jest.Mock;
   };
   $queryRaw: jest.Mock;
   $queryRawUnsafe: jest.Mock;
@@ -20,6 +21,7 @@ export function createPrismaMock(): PrismaMock {
     url: {
       findFirst: jest.fn(),
       create: jest.fn(),
+      updateMany: jest.fn(),
     },
     $queryRaw: jest.fn(),
     $queryRawUnsafe: jest.fn(),

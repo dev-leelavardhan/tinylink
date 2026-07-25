@@ -59,6 +59,7 @@ describe('UrlRedirectService', () => {
       disabled: url.disabled,
       expiresAt: url.expiresAt?.toISOString() ?? null,
       lastAccessedAt: new Date().toISOString(),
+      deletedAt: url.deletedAt?.toISOString() ?? null,
     }));
 
     const module: TestingModule = await Test.createTestingModule({
@@ -86,6 +87,7 @@ describe('UrlRedirectService', () => {
         disabled: false,
         expiresAt: null,
         lastAccessedAt: null,
+        deletedAt: null,
       };
       cache.get.mockResolvedValue(cached);
 
@@ -105,6 +107,7 @@ describe('UrlRedirectService', () => {
         customAlias: null,
         disabled: false,
         expiresAt: null,
+        deletedAt: null,
       };
       repository.findByShortCodeOrAlias.mockResolvedValue(url);
 
@@ -123,6 +126,7 @@ describe('UrlRedirectService', () => {
         customAlias: 'my-alias',
         disabled: false,
         expiresAt: null,
+        deletedAt: null,
       };
       repository.findByShortCodeOrAlias.mockResolvedValue(url);
 
@@ -141,6 +145,7 @@ describe('UrlRedirectService', () => {
         customAlias: 'same',
         disabled: false,
         expiresAt: null,
+        deletedAt: null,
       };
       repository.findByShortCodeOrAlias.mockResolvedValue(url);
 
@@ -169,6 +174,7 @@ describe('UrlRedirectService', () => {
         customAlias: null,
         disabled: true,
         expiresAt: null,
+        deletedAt: null,
       };
       repository.findByShortCodeOrAlias.mockResolvedValue(url);
       validator.validate.mockImplementation(() => {
@@ -189,6 +195,7 @@ describe('UrlRedirectService', () => {
         customAlias: null,
         disabled: false,
         expiresAt: new Date('2020-01-01'),
+        deletedAt: null,
       };
       repository.findByShortCodeOrAlias.mockResolvedValue(url);
       validator.validate.mockImplementation(() => {
@@ -217,6 +224,7 @@ describe('UrlRedirectService', () => {
         disabled: true,
         expiresAt: null,
         lastAccessedAt: null,
+        deletedAt: null,
       };
       cache.get.mockResolvedValue(cached);
       validator.validate.mockImplementation(() => {
@@ -237,6 +245,7 @@ describe('UrlRedirectService', () => {
         customAlias: null,
         disabled: false,
         expiresAt: null,
+        deletedAt: null,
       };
       cache.get.mockResolvedValue(null);
       repository.findByShortCodeOrAlias.mockResolvedValue(url);

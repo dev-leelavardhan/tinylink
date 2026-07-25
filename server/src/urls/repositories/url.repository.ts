@@ -6,6 +6,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class UrlRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  findById(id: string): Promise<Url | null> {
+    return this.prisma.url.findUnique({
+      where: { id },
+    });
+  }
+
   create(data: Prisma.UrlCreateInput): Promise<Url> {
     return this.prisma.url.create({
       data,
@@ -16,6 +22,7 @@ export class UrlRepository {
     return this.prisma.url.findFirst({
       where: {
         OR: [{ customAlias: alias }, { shortCode: alias }],
+        deletedAt: null,
       },
     });
   }
@@ -28,6 +35,7 @@ export class UrlRepository {
       where: {
         originalUrl,
         strategy,
+        deletedAt: null,
       },
     });
   }
@@ -36,6 +44,7 @@ export class UrlRepository {
     return this.prisma.url.findFirst({
       where: {
         OR: [{ shortCode }, { customAlias: shortCode }],
+        deletedAt: null,
       },
     });
   }

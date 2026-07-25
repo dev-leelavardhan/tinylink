@@ -12,4 +12,5 @@ export interface Url {
   customAlias: string | null;
   disabled: boolean;
   expiresAt: Date | null;
+  deletedAt: Date | null;
 }
