@@ -10,6 +10,10 @@ import {
   registerUserSchema,
   type RegisterUserDto,
 } from '../dto/register-user.dto';
+import {
+  resendVerificationSchema,
+  type ResendVerificationDto,
+} from '../dto/resend-verification.dto';
 import { UsersService } from '../service/users.service';
 import { type AuthTokens } from '../types';
 
@@ -42,5 +46,26 @@ export class AuthController {
     dto: RefreshTokenDto,
   ): Promise<{ accessToken: string }> {
     return this.usersService.refresh(dto.refreshToken);
+  }
+
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail(
+    @Body() body: { userId: string; otp: string },
+  ): Promise<{ message: string }> {
+    await this.usersService.verifyEmail(body.userId, body.otp);
+    return { message: 'Email verified successfully' };
+  }
+
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  async resendVerification(
+    @Body(new ZodValidationPipe(resendVerificationSchema))
+    dto: ResendVerificationDto,
+  ): Promise<{ message: string }> {
+    await this.usersService.resendVerification(dto.email);
+    return {
+      message: 'If your email is registered, a verification code has been sent',
+    };
   }
 }

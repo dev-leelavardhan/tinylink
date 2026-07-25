@@ -44,6 +44,52 @@ export class UserRepository {
     });
   }
 
+  updateStatus(id: string, status: UserStatus): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: { status },
+    });
+  }
+
+  // OTP methods
+
+  createOtp(data: {
+    userId: string;
+    email: string;
+    otpHash: string;
+    expiresAt: Date;
+  }) {
+    return this.prisma.verificationOtp.create({ data });
+  }
+
+  findValidOtp(userId: string) {
+    return this.prisma.verificationOtp.findFirst({
+      where: {
+        userId,
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  markOtpUsed(userId: string) {
+    return this.prisma.verificationOtp.updateMany({
+      where: {
+        userId,
+        used: false,
+      },
+      data: { used: true },
+    });
+  }
+
+  markEmailVerified(userId: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: true },
+    });
+  }
+
   private buildFilter(filter: UserFilter): Prisma.UserWhereInput {
     const where: Prisma.UserWhereInput = {};
 

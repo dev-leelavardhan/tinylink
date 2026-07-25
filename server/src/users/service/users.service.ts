@@ -7,6 +7,8 @@ import { type AuthTokens } from '../types';
 import { UserLoginService } from '../use-cases/user-login.service';
 import { UserProfileService } from '../use-cases/user-profile.service';
 import { UserRegisterService } from '../use-cases/user-register.service';
+import { UserVerifyEmailService } from '../use-cases/user-verify-email.service';
+import { UserResendVerificationService } from '../use-cases/user-resend-verification.service';
 
 @Injectable()
 export class UsersService {
@@ -14,6 +16,8 @@ export class UsersService {
     private readonly registerService: UserRegisterService,
     private readonly loginService: UserLoginService,
     private readonly profileService: UserProfileService,
+    private readonly verifyEmailService: UserVerifyEmailService,
+    private readonly resendVerificationService: UserResendVerificationService,
   ) {}
 
   register(dto: RegisterUserDto): Promise<AuthTokens> {
@@ -30,5 +34,13 @@ export class UsersService {
 
   getProfile(userId: string): Promise<UserProfileResponse> {
     return this.profileService.getProfile(userId);
+  }
+
+  verifyEmail(userId: string, otp: string): Promise<void> {
+    return this.verifyEmailService.verify(userId, otp);
+  }
+
+  resendVerification(email: string): Promise<void> {
+    return this.resendVerificationService.resend(email);
   }
 }

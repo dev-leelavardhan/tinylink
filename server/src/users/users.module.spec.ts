@@ -6,6 +6,8 @@ import { UsersModule } from './users.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRepository } from './repositories/user.repository';
+import { RedisService } from '../redis/service/redis.service';
+import { MailerService } from '../mailer/mailer.service';
 
 const prismaMock = {
   user: {
@@ -14,6 +16,25 @@ const prismaMock = {
     findMany: jest.fn(),
     update: jest.fn(),
   },
+  verificationOtp: {
+    create: jest.fn(),
+    findFirst: jest.fn(),
+    updateMany: jest.fn(),
+  },
+};
+
+const redisMock = {
+  setex: jest.fn().mockResolvedValue('OK'),
+  get: jest.fn(),
+  del: jest.fn().mockResolvedValue(1),
+  incr: jest.fn().mockResolvedValue(1),
+  ping: jest.fn().mockResolvedValue('PONG'),
+  quit: jest.fn().mockResolvedValue('OK'),
+  connect: jest.fn().mockResolvedValue(undefined),
+};
+
+const mailerMock = {
+  sendMail: jest.fn().mockResolvedValue(undefined),
 };
 
 describe('UsersModule', () => {
@@ -32,6 +53,10 @@ describe('UsersModule', () => {
     })
       .overrideProvider(PrismaService)
       .useValue(prismaMock)
+      .overrideProvider(RedisService)
+      .useValue(redisMock)
+      .overrideProvider(MailerService)
+      .useValue(mailerMock)
       .compile();
   });
 

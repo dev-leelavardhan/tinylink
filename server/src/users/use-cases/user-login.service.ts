@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import * as argon2 from 'argon2';
 import { PinoLogger } from 'nestjs-pino';
 
 import {
@@ -36,16 +36,21 @@ export class UserLoginService {
       throw new UnauthorizedException(USER_ERROR_MESSAGES.LOGIN_FAILED);
     }
 
-    const passwordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    const passwordValid = await argon2.verify(user.passwordHash, dto.password);
     if (!passwordValid) {
       throw new UnauthorizedException(USER_ERROR_MESSAGES.LOGIN_FAILED);
+    }
+
+    if (user.status === 'PENDING_VERIFICATION') {
+      throw new ForbiddenException(
+        USER_ERROR_MESSAGES.ACCOUNT_PENDING_VERIFICATION,
+      );
     }
 
     if (user.status !== 'ACTIVE') {
       throw new ForbiddenException(USER_ERROR_MESSAGES.ACCOUNT_NOT_ACTIVE);
     }
 
-    // Revoke old tokens by incrementing tokenVersion
     const updatedUser = await this.userRepository.incrementTokenVersion(
       user.id,
     );
@@ -72,7 +77,6 @@ export class UserLoginService {
         throw new UnauthorizedException(USER_ERROR_MESSAGES.TOKEN_REVOKED);
       }
 
-      // Revoke old tokens by incrementing tokenVersion
       const updatedUser = await this.userRepository.incrementTokenVersion(
         user.id,
       );

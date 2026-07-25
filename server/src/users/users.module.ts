@@ -11,9 +11,14 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { UserLoginService } from './use-cases/user-login.service';
 import { UserProfileService } from './use-cases/user-profile.service';
 import { UserRegisterService } from './use-cases/user-register.service';
+import { UserOtpService } from './use-cases/user-otp.service';
+import { UserVerifyEmailService } from './use-cases/user-verify-email.service';
+import { UserResendVerificationService } from './use-cases/user-resend-verification.service';
+import { RedisModule } from '../redis/redis.module';
+import { MailerModule } from '../mailer/mailer.module';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({})],
+  imports: [PassportModule, JwtModule.register({}), RedisModule, MailerModule],
 
   controllers: [AuthController, UsersController],
 
@@ -26,6 +31,9 @@ import { UserRegisterService } from './use-cases/user-register.service';
     UserRegisterService,
     UserLoginService,
     UserProfileService,
+    UserOtpService,
+    UserVerifyEmailService,
+    UserResendVerificationService,
 
     // Persistence
     UserRepository,

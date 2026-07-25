@@ -4,17 +4,23 @@ import { UsersService } from './users.service';
 import { UserRegisterService } from '../use-cases/user-register.service';
 import { UserLoginService } from '../use-cases/user-login.service';
 import { UserProfileService } from '../use-cases/user-profile.service';
+import { UserVerifyEmailService } from '../use-cases/user-verify-email.service';
+import { UserResendVerificationService } from '../use-cases/user-resend-verification.service';
 
 describe('UsersService', () => {
   let service: UsersService;
   let registerService: { register: jest.Mock };
   let loginService: { login: jest.Mock; refresh: jest.Mock };
   let profileService: { getProfile: jest.Mock };
+  let verifyEmailService: { verify: jest.Mock };
+  let resendVerificationService: { resend: jest.Mock };
 
   beforeEach(async () => {
     registerService = { register: jest.fn() };
     loginService = { login: jest.fn(), refresh: jest.fn() };
     profileService = { getProfile: jest.fn() };
+    verifyEmailService = { verify: jest.fn() };
+    resendVerificationService = { resend: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -22,6 +28,11 @@ describe('UsersService', () => {
         { provide: UserRegisterService, useValue: registerService },
         { provide: UserLoginService, useValue: loginService },
         { provide: UserProfileService, useValue: profileService },
+        { provide: UserVerifyEmailService, useValue: verifyEmailService },
+        {
+          provide: UserResendVerificationService,
+          useValue: resendVerificationService,
+        },
       ],
     }).compile();
 
@@ -34,7 +45,7 @@ describe('UsersService', () => {
 
   describe('register', () => {
     it('should call registerService.register', async () => {
-      const dto = { email: 'test@example.com', password: 'password123' };
+      const dto = { email: 'test@example.com', password: 'Password1!' };
       const expected = { accessToken: 'token', refreshToken: 'refresh' };
       registerService.register.mockResolvedValue(expected);
 
@@ -47,7 +58,7 @@ describe('UsersService', () => {
 
   describe('login', () => {
     it('should call loginService.login', async () => {
-      const dto = { email: 'test@example.com', password: 'password123' };
+      const dto = { email: 'test@example.com', password: 'Password1!' };
       const expected = { accessToken: 'token', refreshToken: 'refresh' };
       loginService.login.mockResolvedValue(expected);
 
@@ -88,6 +99,31 @@ describe('UsersService', () => {
 
       expect(result).toEqual(expected);
       expect(profileService.getProfile).toHaveBeenCalledWith(userId);
+    });
+  });
+
+  describe('verifyEmail', () => {
+    it('should call verifyEmailService.verify', async () => {
+      verifyEmailService.verify.mockResolvedValue(undefined);
+
+      await service.verifyEmail('user-1', '123456');
+
+      expect(verifyEmailService.verify).toHaveBeenCalledWith(
+        'user-1',
+        '123456',
+      );
+    });
+  });
+
+  describe('resendVerification', () => {
+    it('should call resendVerificationService.resend', async () => {
+      resendVerificationService.resend.mockResolvedValue(undefined);
+
+      await service.resendVerification('test@example.com');
+
+      expect(resendVerificationService.resend).toHaveBeenCalledWith(
+        'test@example.com',
+      );
     });
   });
 });

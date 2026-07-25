@@ -9,7 +9,8 @@ describe('AuthController', () => {
     register: jest.Mock;
     login: jest.Mock;
     refresh: jest.Mock;
-    getProfile: jest.Mock;
+    verifyEmail: jest.Mock;
+    resendVerification: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -17,7 +18,8 @@ describe('AuthController', () => {
       register: jest.fn(),
       login: jest.fn(),
       refresh: jest.fn(),
-      getProfile: jest.fn(),
+      verifyEmail: jest.fn(),
+      resendVerification: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -34,7 +36,7 @@ describe('AuthController', () => {
 
   describe('register', () => {
     it('should register a new user', async () => {
-      const dto = { email: 'test@example.com', password: 'password123' };
+      const dto = { email: 'test@example.com', password: 'Password1!' };
       const expected = { accessToken: 'token', refreshToken: 'refresh' };
       usersService.register.mockResolvedValue(expected);
 
@@ -47,7 +49,7 @@ describe('AuthController', () => {
 
   describe('login', () => {
     it('should login user', async () => {
-      const dto = { email: 'test@example.com', password: 'password123' };
+      const dto = { email: 'test@example.com', password: 'Password1!' };
       const expected = { accessToken: 'token', refreshToken: 'refresh' };
       usersService.login.mockResolvedValue(expected);
 
@@ -68,6 +70,38 @@ describe('AuthController', () => {
 
       expect(result).toEqual(expected);
       expect(usersService.refresh).toHaveBeenCalledWith('refresh-token');
+    });
+  });
+
+  describe('verifyEmail', () => {
+    it('should verify email', async () => {
+      usersService.verifyEmail.mockResolvedValue(undefined);
+
+      const result = await controller.verifyEmail({
+        userId: 'user-1',
+        otp: '123456',
+      });
+
+      expect(result).toEqual({ message: 'Email verified successfully' });
+      expect(usersService.verifyEmail).toHaveBeenCalledWith('user-1', '123456');
+    });
+  });
+
+  describe('resendVerification', () => {
+    it('should resend verification', async () => {
+      usersService.resendVerification.mockResolvedValue(undefined);
+
+      const result = await controller.resendVerification({
+        email: 'test@example.com',
+      });
+
+      expect(result).toEqual({
+        message:
+          'If your email is registered, a verification code has been sent',
+      });
+      expect(usersService.resendVerification).toHaveBeenCalledWith(
+        'test@example.com',
+      );
     });
   });
 });

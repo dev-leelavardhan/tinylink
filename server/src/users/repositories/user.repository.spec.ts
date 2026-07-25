@@ -12,6 +12,11 @@ describe('UserRepository', () => {
       findMany: jest.Mock;
       update: jest.Mock;
     };
+    verificationOtp: {
+      create: jest.Mock;
+      findFirst: jest.Mock;
+      updateMany: jest.Mock;
+    };
   };
 
   beforeEach(async () => {
@@ -21,6 +26,11 @@ describe('UserRepository', () => {
         findUnique: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
+      },
+      verificationOtp: {
+        create: jest.fn(),
+        findFirst: jest.fn(),
+        updateMany: jest.fn(),
       },
     };
 
@@ -114,6 +124,98 @@ describe('UserRepository', () => {
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
         data: { tokenVersion: { increment: 1 } },
+      });
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('should update user status', async () => {
+      const updatedUser = { id: 'user-1', status: 'ACTIVE' };
+      prisma.user.update.mockResolvedValue(updatedUser);
+
+      const result = await repository.updateStatus('user-1', 'ACTIVE');
+
+      expect(result).toEqual(updatedUser);
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { status: 'ACTIVE' },
+      });
+    });
+  });
+
+  describe('markEmailVerified', () => {
+    it('should mark email as verified', async () => {
+      const updatedUser = { id: 'user-1', emailVerified: true };
+      prisma.user.update.mockResolvedValue(updatedUser);
+
+      const result = await repository.markEmailVerified('user-1');
+
+      expect(result).toEqual(updatedUser);
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { emailVerified: true },
+      });
+    });
+  });
+
+  describe('OTP methods', () => {
+    describe('createOtp', () => {
+      it('should create an OTP record', async () => {
+        const otpData = {
+          userId: 'user-1',
+          email: 'test@example.com',
+          otpHash: 'hashed-otp',
+          expiresAt: new Date(),
+        };
+        prisma.verificationOtp.create.mockResolvedValue({
+          id: 'otp-1',
+          ...otpData,
+        });
+
+        const result = await repository.createOtp(otpData);
+
+        expect(result).toBeDefined();
+        expect(prisma.verificationOtp.create).toHaveBeenCalledWith({
+          data: otpData,
+        });
+      });
+    });
+
+    describe('findValidOtp', () => {
+      it('should find a valid OTP', async () => {
+        const expectedOtp = {
+          id: 'otp-1',
+          userId: 'user-1',
+          otpHash: 'hashed-otp',
+          email: 'test@example.com',
+          used: false,
+        };
+        prisma.verificationOtp.findFirst.mockResolvedValue(expectedOtp);
+
+        const result = await repository.findValidOtp('user-1');
+
+        expect(result).toEqual(expectedOtp);
+      });
+
+      it('should return null if no valid OTP', async () => {
+        prisma.verificationOtp.findFirst.mockResolvedValue(null);
+
+        const result = await repository.findValidOtp('user-1');
+
+        expect(result).toBeNull();
+      });
+    });
+
+    describe('markOtpUsed', () => {
+      it('should mark OTPs as used', async () => {
+        prisma.verificationOtp.updateMany.mockResolvedValue({ count: 1 });
+
+        await repository.markOtpUsed('user-1');
+
+        expect(prisma.verificationOtp.updateMany).toHaveBeenCalledWith({
+          where: { userId: 'user-1', used: false },
+          data: { used: true },
+        });
       });
     });
   });

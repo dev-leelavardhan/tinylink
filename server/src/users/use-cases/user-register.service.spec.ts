@@ -10,10 +10,11 @@ import { PinoLogger } from 'nestjs-pino';
 
 import { UserRegisterService } from './user-register.service';
 import { UserRepository } from '../repositories/user.repository';
-import { UserMapper } from '../mappers/user.mapper';
+import { UserOtpService } from './user-otp.service';
+import { MailerService } from '../../mailer/mailer.service';
 import { createLoggerMock } from '../../testing/mocks';
 
-jest.mock('bcrypt', () => ({
+jest.mock('argon2', () => ({
   hash: jest.fn().mockResolvedValue('hashed-password'),
 }));
 
@@ -28,16 +29,21 @@ describe('UserRegisterService', () => {
     incrementTokenVersion: jest.fn(),
   };
 
-  const mapper = {
-    toProfile: jest.fn(),
-  };
-
   const jwtService = {
     signAsync: jest.fn().mockResolvedValue('jwt-token'),
   };
 
   const configService = {
     getOrThrow: jest.fn().mockReturnValue('secret-key'),
+  };
+
+  const otpService = {
+    generate: jest.fn().mockResolvedValue('123456'),
+    verify: jest.fn(),
+  };
+
+  const mailerService = {
+    sendMail: jest.fn().mockResolvedValue(undefined),
   };
 
   const logger = createLoggerMock();
@@ -51,9 +57,10 @@ describe('UserRegisterService', () => {
       providers: [
         UserRegisterService,
         { provide: UserRepository, useValue: repository },
-        { provide: UserMapper, useValue: mapper },
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: configService },
+        { provide: UserOtpService, useValue: otpService },
+        { provide: MailerService, useValue: mailerService },
         { provide: PinoLogger, useValue: logger },
       ],
     }).compile();
@@ -66,7 +73,7 @@ describe('UserRegisterService', () => {
   });
 
   describe('register', () => {
-    const dto = { email: 'test@example.com', password: 'password123' };
+    const dto = { email: 'test@example.com', password: 'Password1!' };
 
     it('should register a new user and return tokens', async () => {
       const createdUser = {
@@ -85,7 +92,51 @@ describe('UserRegisterService', () => {
       expect(repository.create).toHaveBeenCalledWith({
         email: dto.email,
         passwordHash: 'hashed-password',
+        status: 'PENDING_VERIFICATION',
       });
+      expect(otpService.generate).toHaveBeenCalledWith('user-1', dto.email);
+      expect(mailerService.sendMail).toHaveBeenCalledWith({
+        to: dto.email,
+        subject: 'Verify your email address',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        html: expect.stringContaining('123456'),
+      });
+    });
+
+    it('should still return tokens if OTP generation fails', async () => {
+      const createdUser = {
+        id: 'user-1',
+        email: dto.email,
+        tokenVersion: 0,
+      };
+      repository.create.mockResolvedValue(createdUser);
+      otpService.generate.mockRejectedValueOnce(new Error('Redis down'));
+
+      const result = await service.register(dto);
+
+      expect(result).toEqual({
+        accessToken: 'jwt-token',
+        refreshToken: 'jwt-token',
+      });
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('should still return tokens if email send fails', async () => {
+      const createdUser = {
+        id: 'user-1',
+        email: dto.email,
+        tokenVersion: 0,
+      };
+      repository.create.mockResolvedValue(createdUser);
+      mailerService.sendMail.mockRejectedValueOnce(new Error('SMTP error'));
+
+      const result = await service.register(dto);
+
+      expect(result).toEqual({
+        accessToken: 'jwt-token',
+        refreshToken: 'jwt-token',
+      });
+      expect(logger.error).toHaveBeenCalled();
     });
 
     it('should throw ConflictException for duplicate email', async () => {

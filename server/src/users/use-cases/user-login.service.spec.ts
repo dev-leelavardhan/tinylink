@@ -8,8 +8,8 @@ import { UserLoginService } from './user-login.service';
 import { UserRepository } from '../repositories/user.repository';
 import { createLoggerMock } from '../../testing/mocks';
 
-jest.mock('bcrypt', () => ({
-  compare: jest.fn(),
+jest.mock('argon2', () => ({
+  verify: jest.fn(),
 }));
 
 describe('UserLoginService', () => {
@@ -73,8 +73,8 @@ describe('UserLoginService', () => {
         tokenVersion: 1,
       });
 
-      const bcrypt = jest.requireMock<typeof import('bcrypt')>('bcrypt');
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      const argon2 = jest.requireMock<typeof import('argon2')>('argon2');
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
 
       const result = await service.login(dto);
 
@@ -102,8 +102,8 @@ describe('UserLoginService', () => {
       };
       repository.findByEmail.mockResolvedValue(user);
 
-      const bcrypt = jest.requireMock<typeof import('bcrypt')>('bcrypt');
-      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      const argon2 = jest.requireMock<typeof import('argon2')>('argon2');
+      (argon2.verify as jest.Mock).mockResolvedValue(false);
 
       await expect(service.login(dto)).rejects.toThrow(UnauthorizedException);
     });
@@ -118,8 +118,24 @@ describe('UserLoginService', () => {
       };
       repository.findByEmail.mockResolvedValue(user);
 
-      const bcrypt = jest.requireMock<typeof import('bcrypt')>('bcrypt');
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      const argon2 = jest.requireMock<typeof import('argon2')>('argon2');
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
+
+      await expect(service.login(dto)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw ForbiddenException for pending verification', async () => {
+      const user = {
+        id: 'user-1',
+        email: dto.email,
+        passwordHash: 'hashed-password',
+        status: 'PENDING_VERIFICATION',
+        tokenVersion: 0,
+      };
+      repository.findByEmail.mockResolvedValue(user);
+
+      const argon2 = jest.requireMock<typeof import('argon2')>('argon2');
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
 
       await expect(service.login(dto)).rejects.toThrow(ForbiddenException);
     });
