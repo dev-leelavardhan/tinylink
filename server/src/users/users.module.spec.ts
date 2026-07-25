@@ -10,6 +10,12 @@ import { UserRepository } from './repositories/user.repository';
 import { RedisService } from '../redis/service/redis.service';
 import { MailerService } from '../mailer/mailer.service';
 
+const testConfig = {
+  JWT_ACCESS_SECRET: 'test-access-secret-min-32-chars-long!!',
+  JWT_REFRESH_SECRET: 'test-refresh-secret-min-32-chars-long!',
+  DATABASE_URL: 'postgresql://localhost:5432/test',
+};
+
 const prismaMock = {
   user: {
     create: jest.fn(),
@@ -44,7 +50,11 @@ describe('UsersModule', () => {
   beforeEach(async () => {
     module = await Test.createTestingModule({
       imports: [
-        ConfigModule.forRoot({ isGlobal: true, cache: true }),
+        ConfigModule.forRoot({
+          isGlobal: true,
+          cache: true,
+          load: [() => testConfig],
+        }),
         ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
         LoggerModule.forRoot({
           pinoHttp: { transport: { target: 'pino-pretty' } },
