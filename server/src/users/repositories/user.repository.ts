@@ -37,6 +37,21 @@ export class UserRepository {
     });
   }
 
+  updateLastLoginMetadata(
+    id: string,
+    ip: string | undefined,
+    userAgent: string | undefined,
+  ): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        lastLoginAt: new Date(),
+        lastLoginIp: ip,
+        lastUserAgent: userAgent,
+      },
+    });
+  }
+
   incrementTokenVersion(id: string): Promise<User> {
     return this.prisma.user.update({
       where: { id },
@@ -48,6 +63,36 @@ export class UserRepository {
     return this.prisma.user.update({
       where: { id },
       data: { status },
+    });
+  }
+
+  incrementFailedLoginAttempts(id: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        failedLoginAttempts: { increment: 1 },
+      },
+    });
+  }
+
+  lockAccount(id: string, lockUntil: Date): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        status: 'LOCKED',
+        lockUntil,
+      },
+    });
+  }
+
+  resetFailedLoginAttempts(id: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        failedLoginAttempts: 0,
+        lockUntil: null,
+        status: 'ACTIVE',
+      },
     });
   }
 

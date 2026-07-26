@@ -25,11 +25,31 @@ export const USER_CONSTANTS = {
   ANONYMOUS_URL_LIMIT: 5,
   RATE_LIMIT_TTL_SECONDS: 86_400,
   RATE_LIMIT_KEY_PREFIX: 'url:create:ip:',
+
+  // Brute Force Protection
+  MAX_FAILED_LOGIN_ATTEMPTS: 5,
+  LOCK_DURATION_MINUTES: 15,
+  LOGIN_RATE_LIMIT_PER_ACCOUNT: 20,
+  LOGIN_RATE_LIMIT_WINDOW_SECONDS: 3600,
+  BRUTE_FORCE_KEY_PREFIX: 'auth:failed:',
+  BRUTE_FORCE_LOCK_KEY_PREFIX: 'auth:locked:',
+  BRUTE_FORCE_RATE_LIMIT_KEY_PREFIX: 'auth:ratelimit:',
+
+  // Session
+  SESSION_EXPIRY_DAYS: 7,
+  SESSION_COOKIE_NAME: 'refresh_token',
+  SESSION_COOKIE_PATH: '/auth/refresh',
+  SESSION_COOKIE_MAX_AGE_MS: 7 * 24 * 60 * 60 * 1000,
+
+  // Login Response
+  LOGIN_ACCESS_TOKEN_EXPIRY_SECONDS: 900,
+  LOGIN_TOKEN_TYPE: 'Bearer',
 } as const;
 
 export const USER_LOG_MESSAGES = {
   REGISTER_SUCCESS: 'User registered successfully',
   LOGIN_SUCCESS: 'User logged in',
+  LOGIN_FAILED: 'Login failed',
   PROFILE_FETCHED: 'User profile fetched',
   OTP_GENERATED: 'Verification OTP generated',
   OTP_SENT: 'Verification email sent',
@@ -38,6 +58,11 @@ export const USER_LOG_MESSAGES = {
   OTP_RATE_LIMITED: 'OTP request rate limited',
   OTP_MAX_ATTEMPTS_REACHED: 'OTP max attempts reached',
   OTP_RESEND_SUCCESS: 'Verification OTP resent',
+  ACCOUNT_LOCKED: 'Account temporarily locked',
+  ACCOUNT_UNLOCKED: 'Account unlocked',
+  SESSION_CREATED: 'Session created',
+  SESSION_REVOKED: 'Session revoked',
+  REFRESH_TOKEN_ISSUED: 'Refresh token issued',
 } as const;
 
 export const USER_ERROR_MESSAGES = {
@@ -45,6 +70,9 @@ export const USER_ERROR_MESSAGES = {
   LOGIN_FAILED: 'Invalid email or password',
   ACCOUNT_NOT_ACTIVE: 'Account is not active',
   ACCOUNT_PENDING_VERIFICATION: 'Account pending email verification',
+  ACCOUNT_DISABLED: 'Account is disabled.',
+  ACCOUNT_SUSPENDED: 'Account is suspended.',
+  ACCOUNT_LOCKED: 'Too many failed login attempts. Try again later.',
   USER_NOT_FOUND: 'User not found',
   TOKEN_REVOKED: 'Token has been revoked',
   INVALID_REFRESH_TOKEN: 'Invalid refresh token',

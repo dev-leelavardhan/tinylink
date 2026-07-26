@@ -32,16 +32,40 @@ describe('USER_CONSTANTS', () => {
     expect(USER_CONSTANTS.RATE_LIMIT_TTL_SECONDS).toBe(86400);
     expect(USER_CONSTANTS.RATE_LIMIT_KEY_PREFIX).toBe('url:create:ip:');
   });
+
+  it('should have brute force constants', () => {
+    expect(USER_CONSTANTS.MAX_FAILED_LOGIN_ATTEMPTS).toBe(5);
+    expect(USER_CONSTANTS.LOCK_DURATION_MINUTES).toBe(15);
+    expect(USER_CONSTANTS.LOGIN_RATE_LIMIT_PER_ACCOUNT).toBe(20);
+    expect(USER_CONSTANTS.LOGIN_RATE_LIMIT_WINDOW_SECONDS).toBe(3600);
+  });
+
+  it('should have session constants', () => {
+    expect(USER_CONSTANTS.SESSION_EXPIRY_DAYS).toBe(7);
+    expect(USER_CONSTANTS.SESSION_COOKIE_NAME).toBe('refresh_token');
+    expect(USER_CONSTANTS.SESSION_COOKIE_PATH).toBe('/auth/refresh');
+  });
+
+  it('should have login response constants', () => {
+    expect(USER_CONSTANTS.LOGIN_ACCESS_TOKEN_EXPIRY_SECONDS).toBe(900);
+    expect(USER_CONSTANTS.LOGIN_TOKEN_TYPE).toBe('Bearer');
+  });
 });
 
 describe('USER_LOG_MESSAGES', () => {
   it('should have all log messages', () => {
     expect(USER_LOG_MESSAGES.REGISTER_SUCCESS).toBeDefined();
     expect(USER_LOG_MESSAGES.LOGIN_SUCCESS).toBeDefined();
+    expect(USER_LOG_MESSAGES.LOGIN_FAILED).toBeDefined();
     expect(USER_LOG_MESSAGES.PROFILE_FETCHED).toBeDefined();
     expect(USER_LOG_MESSAGES.OTP_GENERATED).toBeDefined();
     expect(USER_LOG_MESSAGES.OTP_SENT).toBeDefined();
     expect(USER_LOG_MESSAGES.OTP_VERIFIED).toBeDefined();
+    expect(USER_LOG_MESSAGES.ACCOUNT_LOCKED).toBeDefined();
+    expect(USER_LOG_MESSAGES.ACCOUNT_UNLOCKED).toBeDefined();
+    expect(USER_LOG_MESSAGES.SESSION_CREATED).toBeDefined();
+    expect(USER_LOG_MESSAGES.SESSION_REVOKED).toBeDefined();
+    expect(USER_LOG_MESSAGES.REFRESH_TOKEN_ISSUED).toBeDefined();
   });
 });
 
@@ -51,6 +75,9 @@ describe('USER_ERROR_MESSAGES', () => {
     expect(USER_ERROR_MESSAGES.LOGIN_FAILED).toBeDefined();
     expect(USER_ERROR_MESSAGES.ACCOUNT_NOT_ACTIVE).toBeDefined();
     expect(USER_ERROR_MESSAGES.ACCOUNT_PENDING_VERIFICATION).toBeDefined();
+    expect(USER_ERROR_MESSAGES.ACCOUNT_DISABLED).toBeDefined();
+    expect(USER_ERROR_MESSAGES.ACCOUNT_SUSPENDED).toBeDefined();
+    expect(USER_ERROR_MESSAGES.ACCOUNT_LOCKED).toBeDefined();
     expect(USER_ERROR_MESSAGES.USER_NOT_FOUND).toBeDefined();
     expect(USER_ERROR_MESSAGES.TOKEN_REVOKED).toBeDefined();
     expect(USER_ERROR_MESSAGES.INVALID_REFRESH_TOKEN).toBeDefined();

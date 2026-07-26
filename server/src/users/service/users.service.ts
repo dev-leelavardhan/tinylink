@@ -4,11 +4,15 @@ import { type LoginUserDto } from '../dto/login-user.dto';
 import { type RegisterUserDto } from '../dto/register-user.dto';
 import { type UserProfileResponse } from '../mappers/types';
 import { type AuthTokens } from '../types';
-import { UserLoginService } from '../use-cases/user-login.service';
+import {
+  UserLoginService,
+  type LoginResult,
+} from '../use-cases/user-login.service';
 import { UserProfileService } from '../use-cases/user-profile.service';
 import { UserRegisterService } from '../use-cases/user-register.service';
 import { UserVerifyEmailService } from '../use-cases/user-verify-email.service';
 import { UserResendVerificationService } from '../use-cases/user-resend-verification.service';
+import { SessionRepository } from '../repositories/session.repository';
 
 @Injectable()
 export class UsersService {
@@ -18,18 +22,49 @@ export class UsersService {
     private readonly profileService: UserProfileService,
     private readonly verifyEmailService: UserVerifyEmailService,
     private readonly resendVerificationService: UserResendVerificationService,
+    private readonly sessionRepository: SessionRepository,
   ) {}
 
   register(dto: RegisterUserDto): Promise<AuthTokens> {
     return this.registerService.register(dto);
   }
 
-  login(dto: LoginUserDto): Promise<AuthTokens> {
-    return this.loginService.login(dto);
+  login(
+    dto: LoginUserDto,
+    ip: string | undefined,
+    userAgent: string | undefined,
+  ): Promise<LoginResult> {
+    return this.loginService.login(dto, ip, userAgent);
   }
 
-  refresh(refreshToken: string): Promise<{ accessToken: string }> {
-    return this.loginService.refresh(refreshToken);
+  refresh(
+    refreshToken: string,
+    ip: string | undefined,
+    userAgent: string | undefined,
+  ): Promise<LoginResult> {
+    return this.loginService.refresh(refreshToken, ip, userAgent);
+  }
+
+  logout(
+    userId: string,
+    sessionId: string,
+    ip: string | undefined,
+    userAgent: string | undefined,
+  ): Promise<void> {
+    return this.loginService.logout(userId, sessionId, ip, userAgent);
+  }
+
+  getActiveSessions(userId: string) {
+    return this.loginService.getActiveSessions(userId);
+  }
+
+  revokeSession(
+    userId: string,
+    sessionId: string,
+    ip: string | undefined,
+    userAgent: string | undefined,
+  ): Promise<void> {
+    return this.loginService.revokeSession(userId, sessionId, ip, userAgent);
   }
 
   getProfile(userId: string): Promise<UserProfileResponse> {

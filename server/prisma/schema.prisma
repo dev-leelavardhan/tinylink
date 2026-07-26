@@ -15,52 +15,80 @@ enum UserStatus {
   ACTIVE
   PENDING_VERIFICATION
   DISABLED
+  SUSPENDED
+  LOCKED
 }
 
 model User {
-  id             String      @id @default(cuid())
-  email          String      @unique
-  passwordHash   String
-  emailVerified  Boolean     @default(false)
-  status         UserStatus  @default(ACTIVE)
-  tokenVersion   Int         @default(0)
-  lastLoginAt    DateTime?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id                  String     @id @default(cuid())
+  email               String     @unique
+  passwordHash        String
+  emailVerified       Boolean    @default(false)
+  status              UserStatus @default(ACTIVE)
+  tokenVersion        Int        @default(0)
+  failedLoginAttempts Int        @default(0)
+  lockUntil           DateTime?
+  lastLoginAt         DateTime?
+  lastLoginIp         String?
+  lastUserAgent       String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 
-  urls           Url[]
+  urls             Url[]
   verificationOtps VerificationOtp[]
-  auditLogs      AuditLog[]
+  auditLogs        AuditLog[]
+  sessions         Session[]
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String
+  refreshTokenHash String
+  deviceName       String?
+  browser          String?
+  operatingSystem  String?
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime
+  lastUsedAt       DateTime  @default(now())
+  revokedAt        DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshTokenHash])
+  @@index([expiresAt])
 }
 
 model Url {
-  id             String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  originalUrl    String
+  originalUrl String
 
-  shortCode      String   @unique
+  shortCode String @unique
 
-  customAlias    String?  @unique
+  customAlias String? @unique
 
-  strategy       String
+  strategy String
 
-  expiresAt      DateTime?
+  expiresAt DateTime?
 
-  disabled       Boolean  @default(false)
+  disabled Boolean @default(false)
 
-  userId         String?
+  userId String?
 
-  analytics      Analytics[]
+  analytics Analytics[]
 
   lastAccessedAt DateTime?
 
-  deletedAt      DateTime?
+  deletedAt DateTime?
 
-  createdAt      DateTime  @default(now())
+  createdAt DateTime @default(now())
 
-  updatedAt      DateTime  @updatedAt
+  updatedAt DateTime @updatedAt
 
-  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@unique([originalUrl, strategy])
   @@index([expiresAt])
@@ -69,26 +97,26 @@ model Url {
 }
 
 model Analytics {
-  id        String   @id @default(cuid())
-  urlId     String
-  url       Url      @relation(fields: [urlId], references: [id], onDelete: Cascade)
+  id    String @id @default(cuid())
+  urlId String
+  url   Url    @relation(fields: [urlId], references: [id], onDelete: Cascade)
 
   timestamp DateTime @default(now())
 
   // Parsed from User-Agent
-  browser   String?  // e.g. "Chrome", "Firefox"
-  os        String?  // e.g. "Windows", "macOS", "Linux"
-  device    String?  // e.g. "Desktop", "Mobile", "Tablet"
+  browser String? // e.g. "Chrome", "Firefox"
+  os      String? // e.g. "Windows", "macOS", "Linux"
+  device  String? // e.g. "Desktop", "Mobile", "Tablet"
 
   // GeoIP
-  country   String?  // ISO 3166-1 alpha-2 code, e.g. "US"
-  city      String?  // optional, from GeoLite2
+  country String? // ISO 3166-1 alpha-2 code, e.g. "US"
+  city    String? // optional, from GeoLite2
 
   // Privacy: hash IP with salt, never store raw
-  ipHash    String
+  ipHash String
 
   // Referrer (normalized)
-  referrer  String?
+  referrer String?
 
   @@index([urlId, timestamp])
   @@index([urlId, browser])
@@ -112,7 +140,7 @@ model VerificationOtp {
   resendCount Int              @default(0)
   createdAt   DateTime         @default(now())
 
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([email, expiresAt])
@@ -130,6 +158,13 @@ enum AuditEvent {
   OTP_RESEND_COOLDOWN
   EMAIL_VERIFICATION_SUCCESS
   EMAIL_VERIFICATION_FAILED
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  SESSION_CREATED
+  SESSION_REVOKED
+  REFRESH_TOKEN_ISSUED
 }
 
 model AuditLog {
@@ -141,7 +176,7 @@ model AuditLog {
   userAgent String?
   createdAt DateTime   @default(now())
 
-  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([event])

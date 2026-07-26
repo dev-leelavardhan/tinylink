@@ -13,7 +13,14 @@ export type AuditEvent =
   | 'OTP_MAX_ATTEMPTS'
   | 'OTP_RESEND_COOLDOWN'
   | 'EMAIL_VERIFICATION_SUCCESS'
-  | 'EMAIL_VERIFICATION_FAILED';
+  | 'EMAIL_VERIFICATION_FAILED'
+  | 'LOGIN_SUCCESS'
+  | 'LOGIN_FAILED'
+  | 'ACCOUNT_LOCKED'
+  | 'ACCOUNT_UNLOCKED'
+  | 'SESSION_CREATED'
+  | 'SESSION_REVOKED'
+  | 'REFRESH_TOKEN_ISSUED';
 
 export interface AuditLogParams {
   userId?: string;
@@ -129,5 +136,100 @@ export class AuditService {
     metadata?: Record<string, unknown>,
   ): Promise<void> {
     await this.log({ userId, event: 'EMAIL_VERIFICATION_FAILED', metadata });
+  }
+
+  async logLoginSuccess(
+    userId: string,
+    metadata?: Record<string, unknown>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.log({
+      userId,
+      event: 'LOGIN_SUCCESS',
+      metadata,
+      ipAddress,
+      userAgent,
+    });
+  }
+
+  async logLoginFailed(
+    metadata?: Record<string, unknown>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.log({
+      event: 'LOGIN_FAILED',
+      metadata,
+      ipAddress,
+      userAgent,
+    });
+  }
+
+  async logAccountLocked(
+    userId: string,
+    metadata?: Record<string, unknown>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.log({
+      userId,
+      event: 'ACCOUNT_LOCKED',
+      metadata,
+      ipAddress,
+      userAgent,
+    });
+  }
+
+  async logAccountUnlocked(
+    userId: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    await this.log({ userId, event: 'ACCOUNT_UNLOCKED', metadata });
+  }
+
+  async logSessionCreated(
+    userId: string,
+    metadata?: Record<string, unknown>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.log({
+      userId,
+      event: 'SESSION_CREATED',
+      metadata,
+      ipAddress,
+      userAgent,
+    });
+  }
+
+  async logSessionRevoked(
+    userId: string,
+    metadata?: Record<string, unknown>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.log({
+      userId,
+      event: 'SESSION_REVOKED',
+      metadata,
+      ipAddress,
+      userAgent,
+    });
+  }
+
+  async logRefreshTokenIssued(
+    userId: string,
+    metadata?: Record<string, unknown>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.log({
+      userId,
+      event: 'REFRESH_TOKEN_ISSUED',
+      metadata,
+      ipAddress,
+      userAgent,
+    });
   }
 }

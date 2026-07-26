@@ -16,7 +16,11 @@ describe('UserMapper', () => {
         emailVerified: true,
         status: 'ACTIVE' as const,
         tokenVersion: 0,
+        failedLoginAttempts: 0,
+        lockUntil: null,
         lastLoginAt: new Date('2024-01-01'),
+        lastLoginIp: null,
+        lastUserAgent: null,
         createdAt: new Date('2023-01-01'),
         updatedAt: new Date('2024-01-01'),
       };
@@ -41,7 +45,11 @@ describe('UserMapper', () => {
         emailVerified: false,
         status: 'PENDING_VERIFICATION' as const,
         tokenVersion: 0,
+        failedLoginAttempts: 0,
+        lockUntil: null,
         lastLoginAt: null,
+        lastLoginIp: null,
+        lastUserAgent: null,
         createdAt: new Date('2023-01-01'),
         updatedAt: new Date('2024-01-01'),
       };

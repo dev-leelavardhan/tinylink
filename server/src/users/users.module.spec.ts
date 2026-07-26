@@ -7,6 +7,7 @@ import { UsersModule } from './users.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRepository } from './repositories/user.repository';
+import { SessionRepository } from './repositories/session.repository';
 import { RedisService } from '../redis/service/redis.service';
 import { MailerService } from '../mailer/mailer.service';
 
@@ -22,6 +23,16 @@ const prismaMock = {
     findUnique: jest.fn(),
     findMany: jest.fn(),
     update: jest.fn(),
+  },
+  session: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    update: jest.fn(),
+    updateMany: jest.fn(),
+    deleteMany: jest.fn(),
+    count: jest.fn(),
   },
   verificationOtp: {
     create: jest.fn(),
@@ -82,5 +93,9 @@ describe('UsersModule', () => {
 
   it('provides UserRepository', () => {
     expect(module.get(UserRepository)).toBeDefined();
+  });
+
+  it('provides SessionRepository', () => {
+    expect(module.get(SessionRepository)).toBeDefined();
   });
 });

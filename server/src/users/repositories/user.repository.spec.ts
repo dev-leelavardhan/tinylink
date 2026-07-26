@@ -113,6 +113,36 @@ describe('UserRepository', () => {
     });
   });
 
+  describe('updateLastLoginMetadata', () => {
+    it('should update last login metadata with IP and user agent', async () => {
+      const updatedUser = {
+        id: 'user-1',
+        lastLoginAt: new Date(),
+        lastLoginIp: '127.0.0.1',
+        lastUserAgent: 'Mozilla/5.0',
+      };
+      prisma.user.update.mockResolvedValue(updatedUser);
+
+      const result = await repository.updateLastLoginMetadata(
+        'user-1',
+        '127.0.0.1',
+        'Mozilla/5.0',
+      );
+
+      expect(result).toEqual(updatedUser);
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+
+        data: {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          lastLoginAt: expect.any(Date),
+          lastLoginIp: '127.0.0.1',
+          lastUserAgent: 'Mozilla/5.0',
+        },
+      });
+    });
+  });
+
   describe('incrementTokenVersion', () => {
     it('should increment token version', async () => {
       const updatedUser = { id: 'user-1', tokenVersion: 1 };
@@ -139,6 +169,61 @@ describe('UserRepository', () => {
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
         data: { status: 'ACTIVE' },
+      });
+    });
+  });
+
+  describe('incrementFailedLoginAttempts', () => {
+    it('should increment failed login attempts', async () => {
+      const updatedUser = { id: 'user-1', failedLoginAttempts: 1 };
+      prisma.user.update.mockResolvedValue(updatedUser);
+
+      const result = await repository.incrementFailedLoginAttempts('user-1');
+
+      expect(result).toEqual(updatedUser);
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { failedLoginAttempts: { increment: 1 } },
+      });
+    });
+  });
+
+  describe('lockAccount', () => {
+    it('should lock account with lockUntil timestamp', async () => {
+      const lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+      const updatedUser = { id: 'user-1', status: 'LOCKED', lockUntil };
+      prisma.user.update.mockResolvedValue(updatedUser);
+
+      const result = await repository.lockAccount('user-1', lockUntil);
+
+      expect(result).toEqual(updatedUser);
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { status: 'LOCKED', lockUntil },
+      });
+    });
+  });
+
+  describe('resetFailedLoginAttempts', () => {
+    it('should reset failed login attempts and unlock account', async () => {
+      const updatedUser = {
+        id: 'user-1',
+        failedLoginAttempts: 0,
+        lockUntil: null,
+        status: 'ACTIVE',
+      };
+      prisma.user.update.mockResolvedValue(updatedUser);
+
+      const result = await repository.resetFailedLoginAttempts('user-1');
+
+      expect(result).toEqual(updatedUser);
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: {
+          failedLoginAttempts: 0,
+          lockUntil: null,
+          status: 'ACTIVE',
+        },
       });
     });
   });
