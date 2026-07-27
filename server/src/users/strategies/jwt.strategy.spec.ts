@@ -37,7 +37,12 @@ describe('JwtStrategy', () => {
 
   describe('validate', () => {
     it('should return userId if valid', async () => {
-      const payload = { sub: 'user-1', tokenVersion: 0 };
+      const payload = {
+        sub: 'user-1',
+        tokenVersion: 0,
+        iss: 'tinylink',
+        aud: 'tinylink-api',
+      };
       const user = { id: 'user-1', tokenVersion: 0 };
       repository.findById.mockResolvedValue(user);
 
@@ -47,7 +52,12 @@ describe('JwtStrategy', () => {
     });
 
     it('should throw UnauthorizedException if user not found', async () => {
-      const payload = { sub: 'nonexistent', tokenVersion: 0 };
+      const payload = {
+        sub: 'nonexistent',
+        tokenVersion: 0,
+        iss: 'tinylink',
+        aud: 'tinylink-api',
+      };
       repository.findById.mockResolvedValue(null);
 
       await expect(strategy.validate(payload)).rejects.toThrow(
@@ -56,7 +66,12 @@ describe('JwtStrategy', () => {
     });
 
     it('should throw UnauthorizedException if token version mismatch', async () => {
-      const payload = { sub: 'user-1', tokenVersion: 1 };
+      const payload = {
+        sub: 'user-1',
+        tokenVersion: 1,
+        iss: 'tinylink',
+        aud: 'tinylink-api',
+      };
       const user = { id: 'user-1', tokenVersion: 0 };
       repository.findById.mockResolvedValue(user);
 

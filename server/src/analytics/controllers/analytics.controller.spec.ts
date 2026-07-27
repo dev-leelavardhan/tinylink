@@ -3,35 +3,27 @@ import { ForbiddenException } from '@nestjs/common';
 import type { Request } from 'express';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from '../service/analytics.service';
-import { UrlRepository } from '../../urls/repositories/url.repository';
 
 type MockRequest = Request & { user: { userId: string } };
 
 describe('AnalyticsController', () => {
   let controller: AnalyticsController;
   let service: {
+    verifyOwnership: jest.Mock;
     getAggregated: jest.Mock;
     getRecentClicks: jest.Mock;
-  };
-  let urlRepository: {
-    findById: jest.Mock;
   };
 
   beforeEach(async () => {
     service = {
+      verifyOwnership: jest.fn().mockResolvedValue(undefined),
       getAggregated: jest.fn(),
       getRecentClicks: jest.fn(),
-    };
-    urlRepository = {
-      findById: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AnalyticsController],
-      providers: [
-        { provide: AnalyticsService, useValue: service },
-        { provide: UrlRepository, useValue: urlRepository },
-      ],
+      providers: [{ provide: AnalyticsService, useValue: service }],
     }).compile();
 
     controller = module.get<AnalyticsController>(AnalyticsController);
@@ -47,10 +39,6 @@ describe('AnalyticsController', () => {
         byDay: [],
       };
       service.getAggregated.mockResolvedValue(expected);
-      urlRepository.findById.mockResolvedValue({
-        id: 'url-id',
-        userId: 'user-1',
-      });
 
       const mockReq = { user: { userId: 'user-1' } } as MockRequest;
       const result = await controller.getAggregated(
@@ -59,15 +47,15 @@ describe('AnalyticsController', () => {
         mockReq,
       );
 
+      expect(service.verifyOwnership).toHaveBeenCalledWith('url-id', 'user-1');
       expect(service.getAggregated).toHaveBeenCalledWith('url-id', 30);
       expect(result).toEqual(expected);
     });
 
     it('throws ForbiddenException if user does not own URL', async () => {
-      urlRepository.findById.mockResolvedValue({
-        id: 'url-id',
-        userId: 'other-user',
-      });
+      service.verifyOwnership.mockRejectedValue(
+        new ForbiddenException('You do not have access to this URL analytics'),
+      );
 
       const mockReq = { user: { userId: 'user-1' } } as MockRequest;
       await expect(
@@ -80,10 +68,6 @@ describe('AnalyticsController', () => {
     it('returns paginated clicks', async () => {
       const expected = { clicks: [], total: 0, page: 1, limit: 10, pages: 0 };
       service.getRecentClicks.mockResolvedValue(expected);
-      urlRepository.findById.mockResolvedValue({
-        id: 'url-id',
-        userId: 'user-1',
-      });
 
       const mockReq = { user: { userId: 'user-1' } } as MockRequest;
       const result = await controller.getRecentClicks(
@@ -95,6 +79,7 @@ describe('AnalyticsController', () => {
         mockReq,
       );
 
+      expect(service.verifyOwnership).toHaveBeenCalledWith('url-id', 'user-1');
       expect(service.getRecentClicks).toHaveBeenCalledWith('url-id', 1, 10);
       expect(result).toEqual(expected);
     });

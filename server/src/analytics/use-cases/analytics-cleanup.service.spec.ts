@@ -2,12 +2,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PinoLogger } from 'nestjs-pino';
 import { AnalyticsCleanupService } from './analytics-cleanup.service';
 import { AnalyticsRepository } from '../repositories/analytics.repository';
+import { UrlRepository } from '../../urls/repositories/url.repository';
 
 describe('AnalyticsCleanupService', () => {
   let service: AnalyticsCleanupService;
   let repository: {
-    deleteExpiredUrls: jest.Mock;
     deleteOldAnalytics: jest.Mock;
+  };
+  let urlRepository: {
+    deleteExpiredUrls: jest.Mock;
   };
   let logger: {
     setContext: jest.Mock;
@@ -17,8 +20,11 @@ describe('AnalyticsCleanupService', () => {
 
   beforeEach(async () => {
     repository = {
-      deleteExpiredUrls: jest.fn().mockResolvedValue({ count: 5 }),
       deleteOldAnalytics: jest.fn().mockResolvedValue({ count: 100 }),
+    };
+
+    urlRepository = {
+      deleteExpiredUrls: jest.fn().mockResolvedValue({ count: 5 }),
     };
 
     logger = {
@@ -31,6 +37,7 @@ describe('AnalyticsCleanupService', () => {
       providers: [
         AnalyticsCleanupService,
         { provide: AnalyticsRepository, useValue: repository },
+        { provide: UrlRepository, useValue: urlRepository },
         { provide: PinoLogger, useValue: logger },
       ],
     }).compile();
@@ -42,7 +49,7 @@ describe('AnalyticsCleanupService', () => {
     it('deletes expired URLs and old analytics', async () => {
       await service.cleanup();
 
-      expect(repository.deleteExpiredUrls).toHaveBeenCalled();
+      expect(urlRepository.deleteExpiredUrls).toHaveBeenCalled();
       expect(repository.deleteOldAnalytics).toHaveBeenCalledWith(
         expect.any(Date),
       );
@@ -65,7 +72,7 @@ describe('AnalyticsCleanupService', () => {
 
     it('logs and throws on error', async () => {
       const error = new Error('Database error');
-      repository.deleteExpiredUrls.mockRejectedValue(error);
+      urlRepository.deleteExpiredUrls.mockRejectedValue(error);
 
       await expect(service.cleanup()).rejects.toThrow('Database error');
 

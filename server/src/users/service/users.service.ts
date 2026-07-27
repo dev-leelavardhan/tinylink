@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { type LoginUserDto } from '../dto/login-user.dto';
 import { type RegisterUserDto } from '../dto/register-user.dto';
+import { type ChangePasswordDto } from '../dto/change-password.dto';
 import { type UserProfileResponse } from '../mappers/types';
 import { type AuthTokens } from '../types';
 import {
@@ -12,6 +13,7 @@ import { UserProfileService } from '../use-cases/user-profile.service';
 import { UserRegisterService } from '../use-cases/user-register.service';
 import { UserVerifyEmailService } from '../use-cases/user-verify-email.service';
 import { UserResendVerificationService } from '../use-cases/user-resend-verification.service';
+import { UserChangePasswordService } from '../use-cases/user-change-password.service';
 import { SessionRepository } from '../repositories/session.repository';
 
 @Injectable()
@@ -22,6 +24,7 @@ export class UsersService {
     private readonly profileService: UserProfileService,
     private readonly verifyEmailService: UserVerifyEmailService,
     private readonly resendVerificationService: UserResendVerificationService,
+    private readonly changePasswordService: UserChangePasswordService,
     private readonly sessionRepository: SessionRepository,
   ) {}
 
@@ -67,8 +70,36 @@ export class UsersService {
     return this.loginService.revokeSession(userId, sessionId, ip, userAgent);
   }
 
+  globalLogout(
+    userId: string,
+    currentSessionId: string,
+    ip: string | undefined,
+    userAgent: string | undefined,
+  ): Promise<void> {
+    return this.loginService.globalLogout(
+      userId,
+      currentSessionId,
+      ip,
+      userAgent,
+    );
+  }
+
   getProfile(userId: string): Promise<UserProfileResponse> {
     return this.profileService.getProfile(userId);
+  }
+
+  changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+    ip: string | undefined,
+    userAgent: string | undefined,
+  ): Promise<void> {
+    return this.changePasswordService.changePassword(
+      userId,
+      dto,
+      ip,
+      userAgent,
+    );
   }
 
   verifyEmail(email: string, otp: string): Promise<void> {

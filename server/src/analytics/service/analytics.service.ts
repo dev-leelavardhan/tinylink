@@ -5,6 +5,10 @@ import { AnalyticsReadService } from '../use-cases/analytics-read.service';
 export class AnalyticsService {
   constructor(private readonly analyticsReadService: AnalyticsReadService) {}
 
+  verifyOwnership(urlId: string, userId: string): Promise<void> {
+    return this.analyticsReadService.verifyOwnership(urlId, userId);
+  }
+
   getAggregated(urlId: string, days: number) {
     return this.analyticsReadService.getAggregated(urlId, days);
   }

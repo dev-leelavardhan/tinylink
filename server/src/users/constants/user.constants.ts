@@ -41,9 +41,28 @@ export const USER_CONSTANTS = {
   SESSION_COOKIE_PATH: '/auth/refresh',
   SESSION_COOKIE_MAX_AGE_MS: 7 * 24 * 60 * 60 * 1000,
 
+  // JWT
+  JWT_ISSUER: 'tinylink',
+  JWT_AUDIENCE: 'tinylink-api',
+
+  // Session Cleanup
+  SESSION_CLEANUP_QUEUE: 'users-cleanup',
+  SESSION_CLEANUP_JOB_NAME: 'cleanup',
+  SESSION_CLEANUP_CRON: '0 4 * * *',
+  SESSION_CLEANUP_JOB_ID: 'session-cleanup',
+  SESSION_CLEANUP_RETENTION_DAYS: 30,
+  SESSION_CLEANUP_MAX_JOB_ATTEMPTS: 3,
+  SESSION_CLEANUP_JOB_BACKOFF_DELAY_MS: 2_000,
+  SESSION_CLEANUP_COMPLETED_JOB_MAX_AGE_SECONDS: 7 * 86_400,
+  SESSION_CLEANUP_FAILED_JOB_MAX_AGE_SECONDS: 30 * 86_400,
+  SESSION_CLEANUP_WORKER_CONCURRENCY: 1,
+
   // Login Response
   LOGIN_ACCESS_TOKEN_EXPIRY_SECONDS: 900,
   LOGIN_TOKEN_TYPE: 'Bearer',
+
+  // Refresh Token Reuse Detection
+  REFRESH_TOKEN_REUSE_WINDOW_MINUTES: 5,
 } as const;
 
 export const USER_LOG_MESSAGES = {
@@ -63,6 +82,10 @@ export const USER_LOG_MESSAGES = {
   SESSION_CREATED: 'Session created',
   SESSION_REVOKED: 'Session revoked',
   REFRESH_TOKEN_ISSUED: 'Refresh token issued',
+  GLOBAL_LOGOUT: 'All sessions revoked',
+  PASSWORD_CHANGED: 'Password changed successfully',
+  SESSION_CLEANUP_STARTED: 'Starting session cleanup',
+  SESSION_CLEANUP_COMPLETED: 'Session cleanup completed',
 } as const;
 
 export const USER_ERROR_MESSAGES = {
@@ -86,4 +109,8 @@ export const USER_ERROR_MESSAGES = {
     'Too many verification requests. Please wait before trying again.',
   OTP_MAX_ATTEMPTS: 'Too many failed attempts. Please request a new code.',
   OTP_RESEND_COOLDOWN: 'Please wait before requesting a new code.',
+  REFRESH_TOKEN_REUSE_DETECTED:
+    'Security violation: refresh token reuse detected',
+  CHANGE_PASSWORD_CURRENT_INVALID: 'Current password is incorrect',
+  SESSION_CLEANUP_FAILED: 'Session cleanup failed',
 } as const;

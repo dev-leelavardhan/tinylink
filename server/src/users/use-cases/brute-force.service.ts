@@ -18,12 +18,13 @@ export class BruteForceService {
   async checkAndRecordFailedAttempt(userId: string): Promise<void> {
     try {
       const key = `${USER_CONSTANTS.BRUTE_FORCE_KEY_PREFIX}${userId}`;
-      const count = await this.redis.incr(key);
-
-      if (count === 1) {
-        const lockDurationSeconds = USER_CONSTANTS.LOCK_DURATION_MINUTES * 60;
-        await this.redis.expire(key, lockDurationSeconds);
-      }
+      const lockDurationSeconds = USER_CONSTANTS.LOCK_DURATION_MINUTES * 60;
+      const results = await this.redis
+        .multi()
+        .incr(key)
+        .expire(key, lockDurationSeconds)
+        .exec();
+      const count = results?.[0]?.[1] as number;
 
       if (count >= USER_CONSTANTS.MAX_FAILED_LOGIN_ATTEMPTS) {
         const lockUntil = new Date(
@@ -53,21 +54,35 @@ export class BruteForceService {
   }
 
   async isLocked(userId: string): Promise<boolean> {
-    try {
-      const lockKey = `${USER_CONSTANTS.BRUTE_FORCE_LOCK_KEY_PREFIX}${userId}`;
-      const locked = await this.redis.get(lockKey);
+    const lockKey = `${USER_CONSTANTS.BRUTE_FORCE_LOCK_KEY_PREFIX}${userId}`;
 
+    // Try Redis first (fast path)
+    try {
+      const locked = await this.redis.get(lockKey);
       if (locked) {
         return true;
       }
+    } catch (err: unknown) {
+      this.logger.warn(
+        { err, userId },
+        'Redis unavailable for lock check, falling back to DB',
+      );
+    }
 
+    // Fall back to database
+    try {
       const user = await this.userRepository.findById(userId);
       if (user?.status === 'LOCKED' && user.lockUntil) {
         if (user.lockUntil > new Date()) {
-          const ttlSeconds = Math.ceil(
-            (user.lockUntil.getTime() - Date.now()) / 1000,
-          );
-          await this.redis.setex(lockKey, ttlSeconds, '1');
+          // Re-populate Redis lock if possible
+          try {
+            const ttlSeconds = Math.ceil(
+              (user.lockUntil.getTime() - Date.now()) / 1000,
+            );
+            await this.redis.setex(lockKey, ttlSeconds, '1');
+          } catch {
+            // Redis unavailable — DB check is authoritative
+          }
           return true;
         }
 
@@ -77,11 +92,12 @@ export class BruteForceService {
 
       return false;
     } catch (err: unknown) {
-      this.logger.warn(
+      this.logger.error(
         { err, userId },
-        'Failed to check lock status (Redis unavailable)',
+        'Failed to check lock status in database',
       );
-      return false;
+      // Fail-safe: if DB is also unavailable, deny access
+      return true;
     }
   }
 
@@ -107,14 +123,12 @@ export class BruteForceService {
   async checkAccountRateLimit(email: string): Promise<boolean> {
     try {
       const key = `${USER_CONSTANTS.BRUTE_FORCE_RATE_LIMIT_KEY_PREFIX}${email}`;
-      const count = await this.redis.incr(key);
-
-      if (count === 1) {
-        await this.redis.expire(
-          key,
-          USER_CONSTANTS.LOGIN_RATE_LIMIT_WINDOW_SECONDS,
-        );
-      }
+      const results = await this.redis
+        .multi()
+        .incr(key)
+        .expire(key, USER_CONSTANTS.LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+        .exec();
+      const count = results?.[0]?.[1] as number;
 
       if (count > USER_CONSTANTS.LOGIN_RATE_LIMIT_PER_ACCOUNT) {
         this.logger.warn({ email }, 'Account rate limit exceeded');

@@ -21,17 +21,6 @@ export class AnalyticsRepository {
     return this.prisma.analytics.create({ data });
   }
 
-  updateLastAccessedAt(urlId: string) {
-    return this.prisma.url.update({
-      where: {
-        id: urlId,
-      },
-      data: {
-        lastAccessedAt: new Date(),
-      },
-    });
-  }
-
   countByFilter(filter: AnalyticsFilter): Promise<number> {
     return this.prisma.analytics.count({
       where: this.analyticsFilter(filter.urlId, filter.since),
@@ -109,20 +98,6 @@ export class AnalyticsRepository {
         device: true,
         country: true,
         referrer: true,
-      },
-    });
-  }
-
-  deleteExpiredUrls() {
-    return this.prisma.url.updateMany({
-      where: {
-        expiresAt: {
-          lt: new Date(),
-        },
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: new Date(),
       },
     });
   }

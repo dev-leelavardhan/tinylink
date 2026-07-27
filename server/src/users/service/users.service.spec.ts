@@ -6,6 +6,7 @@ import { UserLoginService } from '../use-cases/user-login.service';
 import { UserProfileService } from '../use-cases/user-profile.service';
 import { UserVerifyEmailService } from '../use-cases/user-verify-email.service';
 import { UserResendVerificationService } from '../use-cases/user-resend-verification.service';
+import { UserChangePasswordService } from '../use-cases/user-change-password.service';
 import { SessionRepository } from '../repositories/session.repository';
 
 describe('UsersService', () => {
@@ -21,6 +22,7 @@ describe('UsersService', () => {
   let profileService: { getProfile: jest.Mock };
   let verifyEmailService: { verify: jest.Mock };
   let resendVerificationService: { resend: jest.Mock };
+  let changePasswordService: { changePassword: jest.Mock };
   let sessionRepository: { findActiveByUserId: jest.Mock };
 
   beforeEach(async () => {
@@ -35,6 +37,7 @@ describe('UsersService', () => {
     profileService = { getProfile: jest.fn() };
     verifyEmailService = { verify: jest.fn() };
     resendVerificationService = { resend: jest.fn() };
+    changePasswordService = { changePassword: jest.fn() };
     sessionRepository = { findActiveByUserId: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -47,6 +50,10 @@ describe('UsersService', () => {
         {
           provide: UserResendVerificationService,
           useValue: resendVerificationService,
+        },
+        {
+          provide: UserChangePasswordService,
+          useValue: changePasswordService,
         },
         { provide: SessionRepository, useValue: sessionRepository },
       ],

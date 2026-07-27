@@ -48,4 +48,21 @@ export class UrlRepository {
       },
     });
   }
+
+  updateLastAccessedAt(id: string): Promise<Url> {
+    return this.prisma.url.update({
+      where: { id },
+      data: { lastAccessedAt: new Date() },
+    });
+  }
+
+  deleteExpiredUrls(): Promise<{ count: number }> {
+    return this.prisma.url.updateMany({
+      where: {
+        expiresAt: { lt: new Date() },
+        deletedAt: null,
+      },
+      data: { deletedAt: new Date() },
+    });
+  }
 }

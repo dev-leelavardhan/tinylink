@@ -12,11 +12,6 @@ describe('AnalyticsRepository', () => {
       findMany: jest.Mock;
       deleteMany: jest.Mock;
     };
-    url: {
-      update: jest.Mock;
-      updateMany: jest.Mock;
-      deleteMany: jest.Mock;
-    };
     $queryRaw: jest.Mock;
   };
 
@@ -27,11 +22,6 @@ describe('AnalyticsRepository', () => {
         count: jest.fn(),
         groupBy: jest.fn(),
         findMany: jest.fn(),
-        deleteMany: jest.fn(),
-      },
-      url: {
-        update: jest.fn(),
-        updateMany: jest.fn(),
         deleteMany: jest.fn(),
       },
       $queryRaw: jest.fn(),
@@ -65,20 +55,6 @@ describe('AnalyticsRepository', () => {
 
       expect(prisma.analytics.create).toHaveBeenCalledWith({ data });
       expect(result).toEqual(expected);
-    });
-  });
-
-  describe('updateLastAccessedAt', () => {
-    it('updates the lastAccessedAt field', async () => {
-      prisma.url.update.mockResolvedValue({ id: 'url-id' });
-
-      await repository.updateLastAccessedAt('url-id');
-
-      expect(prisma.url.update).toHaveBeenCalledWith({
-        where: { id: 'url-id' },
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        data: { lastAccessedAt: expect.any(Date) },
-      });
     });
   });
 
@@ -224,27 +200,6 @@ describe('AnalyticsRepository', () => {
         },
       });
       expect(result).toEqual(expected);
-    });
-  });
-
-  describe('deleteExpiredUrls', () => {
-    it('soft-deletes expired URLs', async () => {
-      prisma.url.updateMany.mockResolvedValue({ count: 5 });
-
-      const result = await repository.deleteExpiredUrls();
-
-      expect(prisma.url.updateMany).toHaveBeenCalledWith({
-        where: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          expiresAt: { lt: expect.any(Date) },
-          deletedAt: null,
-        },
-        data: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          deletedAt: expect.any(Date),
-        },
-      });
-      expect(result.count).toBe(5);
     });
   });
 

@@ -16,6 +16,11 @@ import { UserRegisterService } from './use-cases/user-register.service';
 import { UserOtpService } from './use-cases/user-otp.service';
 import { UserVerifyEmailService } from './use-cases/user-verify-email.service';
 import { UserResendVerificationService } from './use-cases/user-resend-verification.service';
+import { UserChangePasswordService } from './use-cases/user-change-password.service';
+import { SessionCleanupService } from './use-cases/session-cleanup.service';
+import { SessionCleanupQueue } from './queue/session-cleanup.queue';
+import { SessionCleanupWorker } from './queue/session-cleanup.worker';
+import { SessionCleanupScheduler } from './queue/session-cleanup.scheduler';
 import { BruteForceService } from './use-cases/brute-force.service';
 import { RedisModule } from '../redis/redis.module';
 import { MailerModule } from '../mailer/mailer.module';
@@ -35,6 +40,9 @@ import { AuditModule } from '../common/audit/audit.module';
   providers: [
     // Infrastructure
     JwtStrategy,
+    SessionCleanupQueue,
+    SessionCleanupWorker,
+    SessionCleanupScheduler,
 
     // Application (use-cases)
     UsersService,
@@ -44,6 +52,8 @@ import { AuditModule } from '../common/audit/audit.module';
     UserOtpService,
     UserVerifyEmailService,
     UserResendVerificationService,
+    UserChangePasswordService,
+    SessionCleanupService,
     BruteForceService,
 
     // Persistence

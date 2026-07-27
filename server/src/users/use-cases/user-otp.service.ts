@@ -238,13 +238,12 @@ export class UserOtpService {
     const rateLimitKey = `otp:ratelimit:${userId}`;
 
     try {
-      const count = await this.redis.incr(rateLimitKey);
-      if (count === 1) {
-        await this.redis.expire(
-          rateLimitKey,
-          USER_CONSTANTS.OTP_RESEND_WINDOW_SECONDS,
-        );
-      }
+      const results = await this.redis
+        .multi()
+        .incr(rateLimitKey)
+        .expire(rateLimitKey, USER_CONSTANTS.OTP_RESEND_WINDOW_SECONDS)
+        .exec();
+      const count = results?.[0]?.[1] as number;
       return count > USER_CONSTANTS.OTP_MAX_RESEND_PER_WINDOW;
     } catch {
       // Redis unavailable — skip rate limiting (degrade gracefully)
@@ -277,14 +276,12 @@ export class UserOtpService {
         // Delete attempts on success
         await this.redis.del(attemptsKey);
       } else {
-        // Increment on failure (atomic)
-        const count = await this.redis.incr(attemptsKey);
-        if (count === 1) {
-          await this.redis.expire(
-            attemptsKey,
-            USER_CONSTANTS.OTP_EXPIRY_SECONDS,
-          );
-        }
+        // Increment on failure with atomic TTL
+        await this.redis
+          .multi()
+          .incr(attemptsKey)
+          .expire(attemptsKey, USER_CONSTANTS.OTP_EXPIRY_SECONDS)
+          .exec();
       }
     } catch {
       // Redis unavailable — skip tracking (degrade gracefully)

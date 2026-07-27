@@ -5,12 +5,14 @@ import { AnalyticsReadService } from '../use-cases/analytics-read.service';
 describe('AnalyticsService', () => {
   let service: AnalyticsService;
   let readService: {
+    verifyOwnership: jest.Mock;
     getAggregated: jest.Mock;
     getRecentClicks: jest.Mock;
   };
 
   beforeEach(async () => {
     readService = {
+      verifyOwnership: jest.fn().mockResolvedValue(undefined),
       getAggregated: jest.fn(),
       getRecentClicks: jest.fn(),
     };
@@ -23,6 +25,17 @@ describe('AnalyticsService', () => {
     }).compile();
 
     service = module.get<AnalyticsService>(AnalyticsService);
+  });
+
+  describe('verifyOwnership', () => {
+    it('delegates to read service', async () => {
+      await service.verifyOwnership('url-id', 'user-1');
+
+      expect(readService.verifyOwnership).toHaveBeenCalledWith(
+        'url-id',
+        'user-1',
+      );
+    });
   });
 
   describe('getAggregated', () => {

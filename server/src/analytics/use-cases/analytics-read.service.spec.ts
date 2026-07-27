@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AnalyticsReadService } from './analytics-read.service';
 import { AnalyticsRepository } from '../repositories/analytics.repository';
+import { UrlRepository } from '../../urls/repositories/url.repository';
 import { AnalyticsMapper } from '../mappers/analytics.mapper';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -13,6 +14,9 @@ describe('AnalyticsReadService', () => {
     groupByDevice: jest.Mock;
     groupByDay: jest.Mock;
     findRecentClicks: jest.Mock;
+  };
+  let urlRepository: {
+    findById: jest.Mock;
   };
   let mapper: {
     toAggregatedResponse: jest.Mock;
@@ -29,6 +33,10 @@ describe('AnalyticsReadService', () => {
       findRecentClicks: jest.fn(),
     };
 
+    urlRepository = {
+      findById: jest.fn(),
+    };
+
     mapper = {
       toAggregatedResponse: jest.fn(),
       toClickResponse: jest.fn(),
@@ -38,6 +46,7 @@ describe('AnalyticsReadService', () => {
       providers: [
         AnalyticsReadService,
         { provide: AnalyticsRepository, useValue: repository },
+        { provide: UrlRepository, useValue: urlRepository },
         { provide: AnalyticsMapper, useValue: mapper },
         {
           provide: PinoLogger,

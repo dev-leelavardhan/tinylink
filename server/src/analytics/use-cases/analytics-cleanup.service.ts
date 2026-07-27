@@ -3,12 +3,14 @@ import { PinoLogger } from 'nestjs-pino';
 
 import { ANALYTICS_CONSTANTS } from '../constants/analytics.constants';
 import { AnalyticsRepository } from '../repositories/analytics.repository';
+import { UrlRepository } from '../../urls/repositories/url.repository';
 import { daysAgo } from '../utils/helpers';
 
 @Injectable()
 export class AnalyticsCleanupService {
   constructor(
     private readonly repository: AnalyticsRepository,
+    private readonly urlRepository: UrlRepository,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(AnalyticsCleanupService.name);
@@ -18,7 +20,7 @@ export class AnalyticsCleanupService {
     this.logger.info('Starting analytics cleanup');
 
     try {
-      const deletedUrls = await this.repository.deleteExpiredUrls();
+      const deletedUrls = await this.urlRepository.deleteExpiredUrls();
 
       this.logger.info(
         { deletedCount: deletedUrls.count },

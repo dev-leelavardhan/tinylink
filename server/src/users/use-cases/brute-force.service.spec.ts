@@ -16,7 +16,14 @@ describe('BruteForceService', () => {
     resetFailedLoginAttempts: jest.fn(),
   };
 
+  const redisMultiChain = {
+    incr: jest.fn().mockReturnThis(),
+    expire: jest.fn().mockReturnThis(),
+    exec: jest.fn(),
+  };
+
   const redis = {
+    multi: jest.fn().mockReturnValue(redisMultiChain),
     incr: jest.fn(),
     expire: jest.fn(),
     get: jest.fn(),
@@ -47,21 +54,24 @@ describe('BruteForceService', () => {
 
   describe('checkAndRecordFailedAttempt', () => {
     it('should increment failed attempts counter', async () => {
-      redis.incr.mockResolvedValue(1);
+      redisMultiChain.exec.mockResolvedValue([[null, 1]]);
 
       await service.checkAndRecordFailedAttempt('user-1');
 
-      expect(redis.incr).toHaveBeenCalledWith(
+      expect(redis.multi).toHaveBeenCalled();
+      expect(redisMultiChain.incr).toHaveBeenCalledWith(
         `${USER_CONSTANTS.BRUTE_FORCE_KEY_PREFIX}user-1`,
       );
-      expect(redis.expire).toHaveBeenCalledWith(
+      expect(redisMultiChain.expire).toHaveBeenCalledWith(
         `${USER_CONSTANTS.BRUTE_FORCE_KEY_PREFIX}user-1`,
         USER_CONSTANTS.LOCK_DURATION_MINUTES * 60,
       );
     });
 
     it('should lock account when max attempts exceeded', async () => {
-      redis.incr.mockResolvedValue(USER_CONSTANTS.MAX_FAILED_LOGIN_ATTEMPTS);
+      redisMultiChain.exec.mockResolvedValue([
+        [null, USER_CONSTANTS.MAX_FAILED_LOGIN_ATTEMPTS],
+      ]);
       userRepository.lockAccount.mockResolvedValue({});
 
       await service.checkAndRecordFailedAttempt('user-1');
@@ -78,7 +88,7 @@ describe('BruteForceService', () => {
     });
 
     it('should handle Redis failure gracefully', async () => {
-      redis.incr.mockRejectedValue(new Error('Redis unavailable'));
+      redisMultiChain.exec.mockRejectedValue(new Error('Redis unavailable'));
 
       await service.checkAndRecordFailedAttempt('user-1');
 
@@ -192,7 +202,7 @@ describe('BruteForceService', () => {
 
   describe('checkAccountRateLimit', () => {
     it('should allow request within rate limit', async () => {
-      redis.incr.mockResolvedValue(1);
+      redisMultiChain.exec.mockResolvedValue([[null, 1]]);
 
       const result = await service.checkAccountRateLimit('test@example.com');
 
@@ -200,9 +210,9 @@ describe('BruteForceService', () => {
     });
 
     it('should block request exceeding rate limit', async () => {
-      redis.incr.mockResolvedValue(
-        USER_CONSTANTS.LOGIN_RATE_LIMIT_PER_ACCOUNT + 1,
-      );
+      redisMultiChain.exec.mockResolvedValue([
+        [null, USER_CONSTANTS.LOGIN_RATE_LIMIT_PER_ACCOUNT + 1],
+      ]);
 
       const result = await service.checkAccountRateLimit('test@example.com');
 
@@ -210,7 +220,7 @@ describe('BruteForceService', () => {
     });
 
     it('should handle Redis failure gracefully', async () => {
-      redis.incr.mockRejectedValue(new Error('Redis unavailable'));
+      redisMultiChain.exec.mockRejectedValue(new Error('Redis unavailable'));
 
       const result = await service.checkAccountRateLimit('test@example.com');
 

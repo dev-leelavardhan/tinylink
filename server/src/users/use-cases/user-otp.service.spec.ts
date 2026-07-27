@@ -10,11 +10,18 @@ import { AuditService } from '../../common/audit/audit.service';
 describe('UserOtpService', () => {
   let service: UserOtpService;
 
+  const redisMultiChain = {
+    incr: jest.fn().mockReturnThis(),
+    expire: jest.fn().mockReturnThis(),
+    exec: jest.fn(),
+  };
+
   const redis = {
     setex: jest.fn().mockResolvedValue('OK'),
     get: jest.fn(),
     del: jest.fn().mockResolvedValue(1),
     incr: jest.fn().mockResolvedValue(1),
+    multi: jest.fn().mockReturnValue(redisMultiChain),
   };
 
   const repository = {
@@ -40,6 +47,7 @@ describe('UserOtpService', () => {
     jest.clearAllMocks();
     // Default: no rate limit, no attempts
     redis.get.mockResolvedValue(null);
+    redisMultiChain.exec.mockResolvedValue([[null, 1]]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -200,14 +208,16 @@ describe('UserOtpService', () => {
         if (key === 'otp:attempts:user-1') return Promise.resolve(null);
         return Promise.resolve(null);
       });
-      redis.incr.mockResolvedValueOnce(1); // rate limit
-      redis.incr.mockResolvedValueOnce(1); // attempts
+      redisMultiChain.exec
+        .mockResolvedValueOnce([[null, 1]]) // rate limit
+        .mockResolvedValueOnce([[null, 1]]); // attempts increment
       repository.findValidOtp.mockResolvedValueOnce(null);
 
       await service.verify('user-1', '000000');
 
-      // Should have tried to increment attempts
-      expect(redis.incr).toHaveBeenCalledWith('otp:attempts:user-1');
+      // Should have tried to increment attempts via multi chain
+      expect(redis.multi).toHaveBeenCalled();
+      expect(redisMultiChain.incr).toHaveBeenCalledWith('otp:attempts:user-1');
     });
 
     it('should block after max attempts', async () => {
@@ -268,7 +278,7 @@ describe('UserOtpService', () => {
         if (key === 'otp:cooldown:user-1') return Promise.resolve(null);
         return Promise.resolve(null);
       });
-      redis.incr.mockResolvedValueOnce(4); // exceeds limit of 3
+      redisMultiChain.exec.mockResolvedValue([[null, 4]]); // exceeds limit of 3
 
       const result = await service.resend('user-1', 'test@example.com');
 

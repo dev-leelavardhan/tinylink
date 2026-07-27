@@ -21,11 +21,12 @@ async function bootstrap() {
     { bufferLogs: true },
   );
 
-  // BUG-016: Add CORS configuration
+  // CORS configuration
+  const corsOrigin = process.env.CORS_ORIGIN;
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: corsOrigin ? corsOrigin.split(',').map((o) => o.trim()) : false,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
+    credentials: !!corsOrigin,
   });
 
   app.useLogger(app.get(Logger));

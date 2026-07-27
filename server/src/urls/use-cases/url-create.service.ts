@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -86,6 +87,10 @@ export class UrlCreateService {
         const cachedUrl = this.urlMapper.toCached(url);
         await this.cache.set(shortCode, cachedUrl);
 
+        if (url.customAlias && url.customAlias !== shortCode) {
+          await this.cache.set(url.customAlias, cachedUrl);
+        }
+
         this.logger.info(
           {
             id: url.id,
@@ -112,6 +117,11 @@ export class UrlCreateService {
             if (concurrent) {
               return this.urlMapper.toResponse(concurrent);
             }
+          }
+
+          // Custom alias collisions cannot be retried — fail immediately
+          if (alias) {
+            throw new ConflictException('Alias already exists');
           }
 
           this.logger.warn(
@@ -155,10 +165,12 @@ export class UrlCreateService {
 
   private async checkAndIncrementAnonymousRateLimit(ip: string): Promise<void> {
     const key = `${USER_CONSTANTS.RATE_LIMIT_KEY_PREFIX}${ip}`;
-    const count = await this.redis.incr(key);
-    if (count === 1) {
-      await this.redis.expire(key, USER_CONSTANTS.RATE_LIMIT_TTL_SECONDS);
-    }
+    const results = await this.redis
+      .multi()
+      .incr(key)
+      .expire(key, USER_CONSTANTS.RATE_LIMIT_TTL_SECONDS)
+      .exec();
+    const count = results?.[0]?.[1] as number;
     if (count > USER_CONSTANTS.ANONYMOUS_URL_LIMIT) {
       throw new ForbiddenException(USER_ERROR_MESSAGES.FREE_LIMIT_REACHED);
     }

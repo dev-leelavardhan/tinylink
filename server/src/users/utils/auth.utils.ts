@@ -4,6 +4,24 @@ import { type Response } from 'express';
 import { USER_CONSTANTS } from '../constants/user.constants';
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// ============================================================================
+// Time Utilities
+// ============================================================================
+
+export function daysFromNow(days: number): Date {
+  return new Date(Date.now() + days * MILLISECONDS_PER_DAY);
+}
+
+export function daysAgo(days: number): Date {
+  return new Date(Date.now() - days * MILLISECONDS_PER_DAY);
+}
+
+// ============================================================================
 // Email Utilities
 // ============================================================================
 

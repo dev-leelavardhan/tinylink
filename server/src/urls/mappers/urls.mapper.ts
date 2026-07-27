@@ -8,14 +8,12 @@ export class UrlMapper {
   constructor(private readonly config: ConfigService) {}
 
   toResponse(url: Url): CreateUrlResponseDto {
+    const code = url.customAlias ?? url.shortCode;
     return {
       id: url.id,
       originalUrl: url.originalUrl,
       shortCode: url.shortCode,
-      shortUrl: new URL(
-        url.shortCode,
-        this.config.getOrThrow('BASE_URL'),
-      ).toString(),
+      shortUrl: new URL(code, this.config.getOrThrow('BASE_URL')).toString(),
     };
   }
 

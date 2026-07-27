@@ -77,4 +77,48 @@ export class SessionRepository {
       },
     });
   }
+
+  findRecentlyRevokedByUserId(userId: string, since: Date): Promise<Session[]> {
+    return this.prisma.session.findMany({
+      where: {
+        userId,
+        revokedAt: { gte: since },
+      },
+    });
+  }
+
+  revokeAllExcept(
+    userId: string,
+    exceptSessionId: string,
+  ): Promise<Prisma.BatchPayload> {
+    return this.prisma.session.updateMany({
+      where: {
+        userId,
+        revokedAt: null,
+        id: { not: exceptSessionId },
+      },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  rotateSession(
+    oldSessionId: string,
+    newSessionData: Prisma.SessionCreateInput,
+  ): Promise<Session> {
+    return this.prisma.$transaction([
+      this.prisma.session.update({
+        where: { id: oldSessionId },
+        data: { revokedAt: new Date() },
+      }),
+      this.prisma.session.create({ data: newSessionData }),
+    ]) as unknown as Promise<Session>;
+  }
+
+  deleteRevokedOlderThan(date: Date): Promise<Prisma.BatchPayload> {
+    return this.prisma.session.deleteMany({
+      where: {
+        revokedAt: { not: null, lt: date },
+      },
+    });
+  }
 }

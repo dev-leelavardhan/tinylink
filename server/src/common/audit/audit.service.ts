@@ -20,7 +20,10 @@ export type AuditEvent =
   | 'ACCOUNT_UNLOCKED'
   | 'SESSION_CREATED'
   | 'SESSION_REVOKED'
-  | 'REFRESH_TOKEN_ISSUED';
+  | 'REFRESH_TOKEN_ISSUED'
+  | 'REFRESH_TOKEN_REUSE'
+  | 'GLOBAL_LOGOUT'
+  | 'PASSWORD_CHANGED';
 
 export interface AuditLogParams {
   userId?: string;
@@ -227,6 +230,51 @@ export class AuditService {
     await this.log({
       userId,
       event: 'REFRESH_TOKEN_ISSUED',
+      metadata,
+      ipAddress,
+      userAgent,
+    });
+  }
+
+  async logRefreshTokenReuse(
+    userId: string,
+    metadata?: Record<string, unknown>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.log({
+      userId,
+      event: 'REFRESH_TOKEN_REUSE',
+      metadata,
+      ipAddress,
+      userAgent,
+    });
+  }
+
+  async logGlobalLogout(
+    userId: string,
+    metadata?: Record<string, unknown>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.log({
+      userId,
+      event: 'GLOBAL_LOGOUT',
+      metadata,
+      ipAddress,
+      userAgent,
+    });
+  }
+
+  async logPasswordChanged(
+    userId: string,
+    metadata?: Record<string, unknown>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.log({
+      userId,
+      event: 'PASSWORD_CHANGED',
       metadata,
       ipAddress,
       userAgent,

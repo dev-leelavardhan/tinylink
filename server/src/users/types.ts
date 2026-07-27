@@ -6,5 +6,7 @@ export interface AuthTokens {
 export interface JwtPayload {
   sub: string;
   tokenVersion: number;
+  iss: string;
+  aud: string;
   sessionId?: string;
 }

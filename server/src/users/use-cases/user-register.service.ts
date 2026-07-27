@@ -114,7 +114,12 @@ export class UserRegisterService {
     userId: string,
     tokenVersion: number,
   ): Promise<AuthTokens> {
-    const payload: JwtPayload = { sub: userId, tokenVersion };
+    const payload: JwtPayload = {
+      sub: userId,
+      tokenVersion,
+      iss: USER_CONSTANTS.JWT_ISSUER,
+      aud: USER_CONSTANTS.JWT_AUDIENCE,
+    };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {

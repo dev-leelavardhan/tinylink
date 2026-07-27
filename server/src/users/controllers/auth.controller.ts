@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Req,
   Res,
@@ -155,13 +156,49 @@ export class AuthController {
     );
   }
 
+  @Delete('sessions')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async revokeAllSessions(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ message: string }> {
+    const userId = (req.user as { userId: string })?.userId;
+    const ip = getClientIp(req.headers, req.ip);
+    const userAgent = req.headers['user-agent'];
+
+    const refreshToken = getRefreshTokenFromCookie(
+      req.cookies as Record<string, string>,
+    );
+
+    if (refreshToken) {
+      const refreshTokenHash = hashRefreshToken(refreshToken);
+      const sessions = await this.usersService.getActiveSessions(userId);
+      const currentSession = sessions.find(
+        (s) => s.refreshTokenHash === refreshTokenHash,
+      );
+
+      if (currentSession) {
+        await this.usersService.globalLogout(
+          userId,
+          currentSession.id,
+          ip,
+          userAgent,
+        );
+      }
+    }
+
+    clearRefreshTokenCookie(res);
+
+    return { message: 'All other sessions revoked successfully' };
+  }
+
   @Delete('sessions/:sessionId')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async revokeSession(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-    @Body('sessionId') sessionId: string,
+    @Param('sessionId') sessionId: string,
   ): Promise<{ message: string }> {
     const userId = (req.user as { userId: string })?.userId;
     const ip = getClientIp(req.headers, req.ip);

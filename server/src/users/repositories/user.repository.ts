@@ -59,6 +59,13 @@ export class UserRepository {
     });
   }
 
+  updatePassword(id: string, passwordHash: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+    });
+  }
+
   updateStatus(id: string, status: UserStatus): Promise<User> {
     return this.prisma.user.update({
       where: { id },

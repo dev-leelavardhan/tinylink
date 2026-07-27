@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PinoLogger } from 'nestjs-pino';
 import { AnalyticsClickService } from './analytics-click.service';
 import { AnalyticsRepository } from '../repositories/analytics.repository';
+import { UrlRepository } from '../../urls/repositories/url.repository';
 import { ClickJobData } from '../types';
 
 jest.mock('node:fs/promises', () => ({
@@ -21,6 +22,8 @@ describe('AnalyticsClickService', () => {
   let service: AnalyticsClickService;
   let repository: {
     create: jest.Mock;
+  };
+  let urlRepository: {
     updateLastAccessedAt: jest.Mock;
   };
   let config: {
@@ -38,6 +41,9 @@ describe('AnalyticsClickService', () => {
 
     repository = {
       create: jest.fn().mockResolvedValue({}),
+    };
+
+    urlRepository = {
       updateLastAccessedAt: jest.fn().mockResolvedValue({}),
     };
 
@@ -64,6 +70,7 @@ describe('AnalyticsClickService', () => {
       providers: [
         AnalyticsClickService,
         { provide: AnalyticsRepository, useValue: repository },
+        { provide: UrlRepository, useValue: urlRepository },
         { provide: ConfigService, useValue: config },
         { provide: PinoLogger, useValue: logger },
       ],
@@ -132,7 +139,7 @@ describe('AnalyticsClickService', () => {
 
       await service.processClick(data);
 
-      expect(repository.updateLastAccessedAt).toHaveBeenCalledWith('url-id');
+      expect(urlRepository.updateLastAccessedAt).toHaveBeenCalledWith('url-id');
     });
 
     it('handles missing IP', async () => {
@@ -194,7 +201,7 @@ describe('AnalyticsClickService', () => {
         { urlId: 'url-id' },
         'URL not found, skipping analytics recording',
       );
-      expect(repository.updateLastAccessedAt).not.toHaveBeenCalled();
+      expect(urlRepository.updateLastAccessedAt).not.toHaveBeenCalled();
     });
 
     it('re-throws non-P2025 errors', async () => {

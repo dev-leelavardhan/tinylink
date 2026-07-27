@@ -19,6 +19,10 @@ jest.mock('../utils/auth.utils', () => ({
   normalizeEmail: jest.fn((email: string) => email.trim().toLowerCase()),
   hashRefreshToken: jest.fn(() => 'hashed-token'),
   parseUserAgent: jest.fn(() => ({ browser: 'Chrome', os: 'Windows' })),
+  daysFromNow: jest.fn((days: number) => {
+    const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+    return new Date(Date.now() + days * MILLISECONDS_PER_DAY);
+  }),
 }));
 
 describe('UserLoginService', () => {
@@ -38,6 +42,9 @@ describe('UserLoginService', () => {
     updateLastUsed: jest.fn(),
     findActiveByUserId: jest.fn(),
     findById: jest.fn(),
+    rotateSession: jest.fn(),
+    findRecentlyRevokedByUserId: jest.fn(),
+    revokeAllForUser: jest.fn(),
   };
 
   const jwtService = {
@@ -58,6 +65,9 @@ describe('UserLoginService', () => {
 
   const auditService = {
     log: jest.fn(),
+    logRefreshTokenIssued: jest.fn(),
+    logRefreshTokenReuse: jest.fn(),
+    logGlobalLogout: jest.fn(),
   };
 
   const logger = createLoggerMock();
@@ -251,7 +261,12 @@ describe('UserLoginService', () => {
 
   describe('refresh', () => {
     it('should refresh token successfully with session rotation', async () => {
-      const payload = { sub: 'user-1', tokenVersion: 0 };
+      const payload = {
+        sub: 'user-1',
+        tokenVersion: 0,
+        iss: 'tinylink',
+        aud: 'tinylink-api',
+      };
       jwtService.verify.mockReturnValue(payload);
 
       const user = { id: 'user-1', tokenVersion: 0 };
@@ -265,7 +280,7 @@ describe('UserLoginService', () => {
         id: 'session-1',
         userId: 'user-1',
       });
-      sessionRepository.create.mockResolvedValue({ id: 'session-2' });
+      sessionRepository.rotateSession.mockResolvedValue({ id: 'session-2' });
 
       const result = await service.refresh(
         'refresh-token',
@@ -279,10 +294,19 @@ describe('UserLoginService', () => {
         expiresIn: 900,
         tokenType: 'Bearer',
       });
-      expect(sessionRepository.revoke).toHaveBeenCalledWith('session-1');
-      expect(sessionRepository.create).toHaveBeenCalled();
-      expect(auditService.log).toHaveBeenCalledWith(
-        expect.objectContaining({ event: 'REFRESH_TOKEN_ISSUED' }),
+      expect(sessionRepository.rotateSession).toHaveBeenCalledWith(
+        'session-1',
+        expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          refreshTokenHash: expect.any(String),
+        }),
+      );
+      expect(auditService.logRefreshTokenIssued).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({
+          oldSessionId: 'session-1',
+          newSessionId: 'session-2',
+        }),
       );
     });
 
@@ -297,11 +321,21 @@ describe('UserLoginService', () => {
     });
 
     it('should throw UnauthorizedException for revoked token', async () => {
-      const payload = { sub: 'user-1', tokenVersion: 1 };
+      const payload = {
+        sub: 'user-1',
+        tokenVersion: 1,
+        iss: 'tinylink',
+        aud: 'tinylink-api',
+      };
       jwtService.verify.mockReturnValue(payload);
 
       const user = { id: 'user-1', tokenVersion: 0 };
       repository.findById.mockResolvedValue(user);
+
+      sessionRepository.findByRefreshTokenHash.mockResolvedValue({
+        id: 'session-1',
+        userId: 'user-1',
+      });
 
       await expect(
         service.refresh('refresh-token', '127.0.0.1', 'Mozilla/5.0'),
@@ -309,10 +343,16 @@ describe('UserLoginService', () => {
     });
 
     it('should throw UnauthorizedException for invalid session', async () => {
-      const payload = { sub: 'user-1', tokenVersion: 0 };
+      const payload = {
+        sub: 'user-1',
+        tokenVersion: 0,
+        iss: 'tinylink',
+        aud: 'tinylink-api',
+      };
       jwtService.verify.mockReturnValue(payload);
 
       sessionRepository.findByRefreshTokenHash.mockResolvedValue(null);
+      sessionRepository.findRecentlyRevokedByUserId.mockResolvedValue([]);
 
       await expect(
         service.refresh('refresh-token', '127.0.0.1', 'Mozilla/5.0'),

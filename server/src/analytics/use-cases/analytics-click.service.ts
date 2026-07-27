@@ -6,6 +6,7 @@ import { PinoLogger } from 'nestjs-pino';
 import { access } from 'node:fs/promises';
 
 import { AnalyticsRepository } from '../repositories/analytics.repository';
+import { UrlRepository } from '../../urls/repositories/url.repository';
 import { type ClickJobData } from '../types';
 import { hashIp, normalizeReferrer, parseUserAgent } from '../utils/helpers';
 
@@ -18,6 +19,7 @@ export class AnalyticsClickService implements OnModuleInit {
 
   constructor(
     private readonly repository: AnalyticsRepository,
+    private readonly urlRepository: UrlRepository,
     private readonly config: ConfigService,
     private readonly logger: PinoLogger,
   ) {
@@ -62,7 +64,7 @@ export class AnalyticsClickService implements OnModuleInit {
         referrer: normalizeReferrer(referrer),
       });
 
-      await this.repository.updateLastAccessedAt(urlId);
+      await this.urlRepository.updateLastAccessedAt(urlId);
     } catch (err: unknown) {
       if (err instanceof Error && 'code' in err && err.code === 'P2025') {
         this.logger.warn(
