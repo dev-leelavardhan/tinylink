@@ -1,10 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ForbiddenException } from '@nestjs/common';
-import type { Request } from 'express';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from '../service/analytics.service';
-
-type MockRequest = Request & { user: { userId: string } };
 
 describe('AnalyticsController', () => {
   let controller: AnalyticsController;
@@ -40,11 +37,11 @@ describe('AnalyticsController', () => {
       };
       service.getAggregated.mockResolvedValue(expected);
 
-      const mockReq = { user: { userId: 'user-1' } } as MockRequest;
+      const user = { userId: 'user-1' };
       const result = await controller.getAggregated(
         'url-id',
         { days: 30 },
-        mockReq,
+        user,
       );
 
       expect(service.verifyOwnership).toHaveBeenCalledWith('url-id', 'user-1');
@@ -57,9 +54,9 @@ describe('AnalyticsController', () => {
         new ForbiddenException('You do not have access to this URL analytics'),
       );
 
-      const mockReq = { user: { userId: 'user-1' } } as MockRequest;
+      const user = { userId: 'user-1' };
       await expect(
-        controller.getAggregated('url-id', { days: 30 }, mockReq),
+        controller.getAggregated('url-id', { days: 30 }, user),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -69,14 +66,14 @@ describe('AnalyticsController', () => {
       const expected = { clicks: [], total: 0, page: 1, limit: 10, pages: 0 };
       service.getRecentClicks.mockResolvedValue(expected);
 
-      const mockReq = { user: { userId: 'user-1' } } as MockRequest;
+      const user = { userId: 'user-1' };
       const result = await controller.getRecentClicks(
         'url-id',
         {
           page: 1,
           limit: 10,
         },
-        mockReq,
+        user,
       );
 
       expect(service.verifyOwnership).toHaveBeenCalledWith('url-id', 'user-1');

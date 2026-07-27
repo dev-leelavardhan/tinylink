@@ -34,7 +34,7 @@ describe('UsersController', () => {
 
   describe('getProfile', () => {
     it('should return user profile', async () => {
-      const req = { user: { userId: 'user-1' } };
+      const user = { userId: 'user-1' };
       const expected = {
         id: 'user-1',
         email: 'test@example.com',
@@ -45,7 +45,7 @@ describe('UsersController', () => {
       };
       usersService.getProfile.mockResolvedValue(expected);
 
-      const result = await controller.getProfile(req);
+      const result = await controller.getProfile(user);
 
       expect(result).toEqual(expected);
       expect(usersService.getProfile).toHaveBeenCalledWith('user-1');

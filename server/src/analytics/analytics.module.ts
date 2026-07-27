@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AuthModule } from '../common/auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RedisModule } from '../redis/redis.module';
 import { UrlRepository } from '../urls/repositories/url.repository';
@@ -16,7 +17,7 @@ import { AnalyticsReadService } from './use-cases/analytics-read.service';
 import { AnalyticsWorker } from './worker/analytics.worker';
 
 @Module({
-  imports: [PrismaModule, RedisModule],
+  imports: [AuthModule, PrismaModule, RedisModule],
 
   controllers: [AnalyticsController],
 

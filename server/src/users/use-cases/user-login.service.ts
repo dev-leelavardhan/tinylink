@@ -399,6 +399,26 @@ export class UserLoginService {
     );
   }
 
+  async logoutAll(
+    userId: string,
+    ip: string | undefined,
+    userAgent: string | undefined,
+  ): Promise<void> {
+    const result = await this.sessionRepository.revokeAllForUser(userId);
+
+    await this.auditService.logGlobalLogout(
+      userId,
+      { revokedCount: result.count },
+      ip,
+      userAgent,
+    );
+
+    this.logger.info(
+      { userId, revokedCount: result.count },
+      USER_LOG_MESSAGES.LOGOUT_ALL_SUCCESS,
+    );
+  }
+
   private async generateTokens(
     userId: string,
     tokenVersion: number,

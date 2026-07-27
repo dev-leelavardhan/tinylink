@@ -11,7 +11,7 @@ import {
 import type { Response } from 'express';
 
 import { ZodValidationPipe } from '../../common/zod/common.validation';
-import { JwtAuthOptionalGuard } from '../../users/guards/jwt-auth.guard';
+import { JwtAuthOptionalGuard } from '../../common/auth/jwt-auth.guard';
 import { qrQuerySchema, type QrQueryDto } from '../dto/qr-query.dto';
 import { UrlsService } from '../service/urls.service';
 

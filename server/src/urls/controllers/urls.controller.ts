@@ -17,7 +17,11 @@ import { ZodValidationPipe } from '../../common/zod/common.validation';
 import { createUrlSchema, type CreateUrlDto } from '../dto/create-url.dto';
 import { UrlsService } from '../service/urls.service';
 import { type CreateUrlResponseDto } from '../types';
-import { JwtAuthOptionalGuard } from '../../users/guards/jwt-auth.guard';
+import { JwtAuthOptionalGuard } from '../../common/auth/jwt-auth.guard';
+import {
+  CurrentUser,
+  type AuthenticatedUser,
+} from '../../common/auth/current-user.decorator';
 
 @Controller('urls')
 export class UrlsController {
@@ -29,9 +33,10 @@ export class UrlsController {
   async create(
     @Body(new ZodValidationPipe(createUrlSchema))
     dto: CreateUrlDto,
-    @Req() req: Request & { user?: { userId: string } },
+    @CurrentUser() user: AuthenticatedUser | undefined,
+    @Req() req: Request,
   ): Promise<CreateUrlResponseDto> {
-    const userId = req.user?.userId;
+    const userId = user?.userId;
     const ip = req.ip ?? (req.socket ? req.socket.remoteAddress : undefined);
     return this.urlsService.create(dto, userId, ip);
   }

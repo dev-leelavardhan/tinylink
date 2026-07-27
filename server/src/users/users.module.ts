@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
+
+import { AuthModule } from '../common/auth/auth.module';
 
 import { AuthController } from './controllers/auth.controller';
 import { UsersController } from './controllers/users.controller';
@@ -17,6 +17,8 @@ import { UserOtpService } from './use-cases/user-otp.service';
 import { UserVerifyEmailService } from './use-cases/user-verify-email.service';
 import { UserResendVerificationService } from './use-cases/user-resend-verification.service';
 import { UserChangePasswordService } from './use-cases/user-change-password.service';
+import { UserForgotPasswordService } from './use-cases/user-forgot-password.service';
+import { UserResetPasswordService } from './use-cases/user-reset-password.service';
 import { SessionCleanupService } from './use-cases/session-cleanup.service';
 import { SessionCleanupQueue } from './queue/session-cleanup.queue';
 import { SessionCleanupWorker } from './queue/session-cleanup.worker';
@@ -27,13 +29,7 @@ import { MailerModule } from '../mailer/mailer.module';
 import { AuditModule } from '../common/audit/audit.module';
 
 @Module({
-  imports: [
-    PassportModule,
-    JwtModule.register({}),
-    RedisModule,
-    MailerModule,
-    AuditModule,
-  ],
+  imports: [AuthModule, RedisModule, MailerModule, AuditModule],
 
   controllers: [AuthController, UsersController],
 
@@ -53,6 +49,8 @@ import { AuditModule } from '../common/audit/audit.module';
     UserVerifyEmailService,
     UserResendVerificationService,
     UserChangePasswordService,
+    UserForgotPasswordService,
+    UserResetPasswordService,
     SessionCleanupService,
     BruteForceService,
 
@@ -65,6 +63,6 @@ import { AuditModule } from '../common/audit/audit.module';
     SessionMapper,
   ],
 
-  exports: [UsersService, UserRepository, SessionRepository, JwtModule],
+  exports: [UsersService, UserRepository, SessionRepository, AuthModule],
 })
 export class UsersModule {}

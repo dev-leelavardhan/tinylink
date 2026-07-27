@@ -25,7 +25,10 @@ export type AuditEvent =
   | 'REFRESH_FAILED'
   | 'SESSION_EXPIRED_ATTEMPT'
   | 'GLOBAL_LOGOUT'
-  | 'PASSWORD_CHANGED';
+  | 'PASSWORD_CHANGED'
+  | 'PASSWORD_RESET_REQUESTED'
+  | 'PASSWORD_RESET_COMPLETED'
+  | 'PASSWORD_RESET_FAILED';
 
 export interface AuditLogParams {
   userId?: string;

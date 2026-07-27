@@ -23,7 +23,11 @@ export class UserOtpService {
     this.logger.setContext(UserOtpService.name);
   }
 
-  async generate(userId: string, email: string): Promise<string> {
+  async generate(
+    userId: string,
+    email: string,
+    type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' = 'EMAIL_VERIFICATION',
+  ): Promise<string> {
     const rawOtp = generateOtp(USER_CONSTANTS.OTP_LENGTH);
     const salt = randomBytes(16).toString('hex');
     const hashedOtp = this.hashOtp(rawOtp, salt);
@@ -32,9 +36,12 @@ export class UserOtpService {
       Date.now() + USER_CONSTANTS.OTP_EXPIRY_SECONDS * 1000,
     );
 
+    const keyPrefix =
+      type === 'PASSWORD_RESET' ? 'otp:reset:' : USER_CONSTANTS.OTP_KEY_PREFIX;
+
     // Try Redis first (fast path), fallback to DB
     try {
-      const key = `${USER_CONSTANTS.OTP_KEY_PREFIX}${userId}`;
+      const key = `${keyPrefix}${userId}`;
       const value = JSON.stringify({
         hashedOtp,
         salt,
@@ -54,18 +61,23 @@ export class UserOtpService {
         otpHash: hashedOtp,
         salt,
         expiresAt,
+        type,
       });
     } catch (err: unknown) {
       this.logger.error({ err, userId }, 'Failed to store OTP in database');
     }
 
-    this.logger.info({ userId }, USER_LOG_MESSAGES.OTP_GENERATED);
+    this.logger.info({ userId, type }, USER_LOG_MESSAGES.OTP_GENERATED);
     await this.auditService.logOtpGenerated(userId);
 
     return rawOtp;
   }
 
-  async verify(userId: string, otp: string): Promise<{ email: string } | null> {
+  async verify(
+    userId: string,
+    otp: string,
+    type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' = 'EMAIL_VERIFICATION',
+  ): Promise<{ email: string } | null> {
     // Check rate limiting first
     const isRateLimited = await this.checkRateLimit(userId);
     if (isRateLimited) {
@@ -82,22 +94,25 @@ export class UserOtpService {
       return null;
     }
 
+    const keyPrefix =
+      type === 'PASSWORD_RESET' ? 'otp:reset:' : USER_CONSTANTS.OTP_KEY_PREFIX;
+
     // Try Redis first (fast path)
-    let result = await this.verifyFromRedis(userId, otp);
+    let result = await this.verifyFromRedis(userId, otp, keyPrefix);
 
     // Fallback to DB if Redis fails or no result
     if (!result) {
-      result = await this.verifyFromDb(userId, otp);
+      result = await this.verifyFromDb(userId, otp, type);
     }
 
     if (result) {
       // Delete from both stores on success
-      await this.deleteOtp(userId);
-      await this.incrementAttempts(userId, true);
-      this.logger.info({ userId }, USER_LOG_MESSAGES.OTP_VERIFIED);
+      await this.deleteOtp(userId, keyPrefix, type);
+      await this.incrementAttempts(userId, true, keyPrefix);
+      this.logger.info({ userId, type }, USER_LOG_MESSAGES.OTP_VERIFIED);
       await this.auditService.logOtpVerified(userId);
     } else {
-      await this.incrementAttempts(userId, false);
+      await this.incrementAttempts(userId, false, keyPrefix);
       await this.auditService.logOtpFailed(userId);
     }
 
@@ -155,9 +170,10 @@ export class UserOtpService {
   private async verifyFromRedis(
     userId: string,
     otp: string,
+    keyPrefix: string,
   ): Promise<{ email: string } | null> {
     try {
-      const key = `${USER_CONSTANTS.OTP_KEY_PREFIX}${userId}`;
+      const key = `${keyPrefix}${userId}`;
       const raw = await this.redis.get(key);
 
       if (!raw) return null;
@@ -184,9 +200,10 @@ export class UserOtpService {
   private async verifyFromDb(
     userId: string,
     otp: string,
+    type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' = 'EMAIL_VERIFICATION',
   ): Promise<{ email: string } | null> {
     try {
-      const otpRecord = await this.userRepository.findValidOtp(userId);
+      const otpRecord = await this.userRepository.findValidOtp(userId, type);
 
       if (!otpRecord) return null;
 
@@ -200,27 +217,37 @@ export class UserOtpService {
     }
   }
 
-  private async deleteOtp(userId: string): Promise<void> {
+  private async deleteOtp(
+    userId: string,
+    keyPrefix: string,
+    type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' = 'EMAIL_VERIFICATION',
+  ): Promise<void> {
     // Mark as used in DB FIRST (prevents reuse via Redis fallback)
     try {
-      await this.userRepository.markOtpUsed(userId);
+      await this.userRepository.markOtpUsed(userId, type);
     } catch (err: unknown) {
       this.logger.error({ err, userId }, 'Failed to mark OTP as used in DB');
     }
 
     // Then delete from Redis
     try {
-      const key = `${USER_CONSTANTS.OTP_KEY_PREFIX}${userId}`;
+      const key = `${keyPrefix}${userId}`;
       await this.redis.del(key);
     } catch {
       // Redis unavailable — DB record already marked as used
     }
   }
 
-  private async invalidateOldOtps(userId: string): Promise<void> {
+  async invalidateOldOtps(
+    userId: string,
+    type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' = 'EMAIL_VERIFICATION',
+  ): Promise<void> {
+    const keyPrefix =
+      type === 'PASSWORD_RESET' ? 'otp:reset:' : USER_CONSTANTS.OTP_KEY_PREFIX;
+
     // Delete from Redis
     try {
-      const key = `${USER_CONSTANTS.OTP_KEY_PREFIX}${userId}`;
+      const key = `${keyPrefix}${userId}`;
       await this.redis.del(key);
     } catch {
       // Redis unavailable — continue
@@ -228,7 +255,7 @@ export class UserOtpService {
 
     // Mark old OTPs as used in DB
     try {
-      await this.userRepository.markOtpUsed(userId);
+      await this.userRepository.markOtpUsed(userId, type);
     } catch {
       // DB unavailable — continue
     }
@@ -268,8 +295,9 @@ export class UserOtpService {
   private async incrementAttempts(
     userId: string,
     success: boolean,
+    keyPrefix: string = USER_CONSTANTS.OTP_KEY_PREFIX,
   ): Promise<void> {
-    const attemptsKey = `otp:attempts:${userId}`;
+    const attemptsKey = `otp:attempts:${keyPrefix}${userId}`;
 
     try {
       if (success) {

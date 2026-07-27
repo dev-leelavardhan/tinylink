@@ -3,6 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { type LoginUserDto } from '../dto/login-user.dto';
 import { type RegisterUserDto } from '../dto/register-user.dto';
 import { type ChangePasswordDto } from '../dto/change-password.dto';
+import { type ForgotPasswordDto } from '../dto/forgot-password.dto';
+import { type ResetPasswordDto } from '../dto/reset-password.dto';
 import { type UserProfileResponse } from '../mappers/types';
 import { type AuthTokens } from '../types';
 import {
@@ -14,6 +16,8 @@ import { UserRegisterService } from '../use-cases/user-register.service';
 import { UserVerifyEmailService } from '../use-cases/user-verify-email.service';
 import { UserResendVerificationService } from '../use-cases/user-resend-verification.service';
 import { UserChangePasswordService } from '../use-cases/user-change-password.service';
+import { UserForgotPasswordService } from '../use-cases/user-forgot-password.service';
+import { UserResetPasswordService } from '../use-cases/user-reset-password.service';
 import { SessionRepository } from '../repositories/session.repository';
 
 @Injectable()
@@ -25,6 +29,8 @@ export class UsersService {
     private readonly verifyEmailService: UserVerifyEmailService,
     private readonly resendVerificationService: UserResendVerificationService,
     private readonly changePasswordService: UserChangePasswordService,
+    private readonly forgotPasswordService: UserForgotPasswordService,
+    private readonly resetPasswordService: UserResetPasswordService,
     private readonly sessionRepository: SessionRepository,
   ) {}
 
@@ -84,6 +90,14 @@ export class UsersService {
     );
   }
 
+  logoutAll(
+    userId: string,
+    ip: string | undefined,
+    userAgent: string | undefined,
+  ): Promise<void> {
+    return this.loginService.logoutAll(userId, ip, userAgent);
+  }
+
   getProfile(userId: string): Promise<UserProfileResponse> {
     return this.profileService.getProfile(userId);
   }
@@ -108,5 +122,13 @@ export class UsersService {
 
   resendVerification(email: string): Promise<void> {
     return this.resendVerificationService.resend(email);
+  }
+
+  forgotPassword(dto: ForgotPasswordDto): Promise<void> {
+    return this.forgotPasswordService.execute(dto);
+  }
+
+  resetPassword(dto: ResetPasswordDto): Promise<void> {
+    return this.resetPasswordService.execute(dto);
   }
 }

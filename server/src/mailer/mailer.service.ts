@@ -78,4 +78,18 @@ export class MailerService {
       throw new Error(MAILER_ERROR_MESSAGES.SEND_FAILED);
     }
   }
+
+  async sendPasswordResetEmail(email: string, otp: string): Promise<void> {
+    const subject = 'Reset your password';
+    const html = `
+      <h1>Password Reset Request</h1>
+      <p>You requested to reset your password. Use the following code:</p>
+      <h2 style="font-size: 32px; letter-spacing: 8px; text-align: center; padding: 20px; background: #f5f5f5; border-radius: 8px;">${otp}</h2>
+      <p>This code will expire in 10 minutes.</p>
+      <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>
+    `;
+    const text = `Your password reset code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this, please ignore this email.`;
+
+    await this.sendMail({ to: email, subject, html, text });
+  }
 }

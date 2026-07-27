@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -51,6 +55,14 @@ export class UserChangePasswordService {
       throw new UnauthorizedException(
         USER_ERROR_MESSAGES.CHANGE_PASSWORD_CURRENT_INVALID,
       );
+    }
+
+    const isSamePassword = await argon2.verify(
+      user.passwordHash,
+      dto.newPassword,
+    );
+    if (isSamePassword) {
+      throw new BadRequestException(USER_ERROR_MESSAGES.CHANGE_PASSWORD_REUSE);
     }
 
     const newPasswordHash = await argon2.hash(dto.newPassword, {

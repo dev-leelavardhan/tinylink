@@ -111,20 +111,25 @@ export class UserRepository {
     otpHash: string;
     salt: string;
     expiresAt: Date;
+    type?: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET';
   }) {
+    const { type = 'EMAIL_VERIFICATION', ...rest } = data;
     return this.prisma.verificationOtp.create({
       data: {
-        ...data,
-        type: 'EMAIL_VERIFICATION',
+        ...rest,
+        type,
       },
     });
   }
 
-  findValidOtp(userId: string) {
+  findValidOtp(
+    userId: string,
+    type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' = 'EMAIL_VERIFICATION',
+  ) {
     return this.prisma.verificationOtp.findFirst({
       where: {
         userId,
-        type: 'EMAIL_VERIFICATION',
+        type,
         usedAt: null,
         expiresAt: { gt: new Date() },
       },
@@ -132,11 +137,14 @@ export class UserRepository {
     });
   }
 
-  markOtpUsed(userId: string) {
+  markOtpUsed(
+    userId: string,
+    type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' = 'EMAIL_VERIFICATION',
+  ) {
     return this.prisma.verificationOtp.updateMany({
       where: {
         userId,
-        type: 'EMAIL_VERIFICATION',
+        type,
         usedAt: null,
       },
       data: { usedAt: new Date() },

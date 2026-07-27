@@ -31,13 +31,13 @@ describe('UrlsController (unit)', () => {
 
     urlsService.create.mockResolvedValue(response);
 
+    const user = undefined;
     const req = {
       ip: '192.168.1.1',
       socket: { remoteAddress: '192.168.1.1' },
-      user: undefined,
-    } as unknown as Request & { user?: { userId: string } };
+    } as unknown as Request;
 
-    await expect(controller.create(dto, req)).resolves.toEqual(response);
+    await expect(controller.create(dto, user, req)).resolves.toEqual(response);
     expect(urlsService.create).toHaveBeenCalledWith(
       dto,
       undefined,

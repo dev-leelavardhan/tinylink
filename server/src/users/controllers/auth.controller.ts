@@ -29,6 +29,14 @@ import {
   verifyEmailSchema,
   type VerifyEmailDto,
 } from '../dto/verify-email.dto';
+import {
+  forgotPasswordSchema,
+  type ForgotPasswordDto,
+} from '../dto/forgot-password.dto';
+import {
+  resetPasswordSchema,
+  type ResetPasswordDto,
+} from '../dto/reset-password.dto';
 import { UsersService } from '../service/users.service';
 import { type AuthTokens } from '../types';
 import { type LoginResult } from '../use-cases/user-login.service';
@@ -40,7 +48,11 @@ import {
   getClientIp,
   hashRefreshToken,
 } from '../utils/auth.utils';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
+import {
+  CurrentUser,
+  type AuthenticatedUser,
+} from '../../common/auth/current-user.decorator';
 import { USER_ERROR_MESSAGES } from '../constants/user.constants';
 
 @Controller('auth')
@@ -115,10 +127,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async logout(
+    @CurrentUser() user: AuthenticatedUser,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ message: string }> {
-    const userId = (req.user as { userId: string })?.userId;
     const refreshToken = getRefreshTokenFromCookie(
       req.cookies as Record<string, string>,
     );
@@ -129,14 +141,14 @@ export class AuthController {
 
       const refreshTokenHash = hashRefreshToken(refreshToken);
 
-      const session = await this.usersService.getActiveSessions(userId);
+      const session = await this.usersService.getActiveSessions(user.userId);
       const currentSession = session.find(
         (s) => s.refreshTokenHash === refreshTokenHash,
       );
 
       if (currentSession) {
         await this.usersService.logout(
-          userId,
+          user.userId,
           currentSession.id,
           ip,
           userAgent,
@@ -146,15 +158,14 @@ export class AuthController {
 
     clearRefreshTokenCookie(res);
 
-    return { message: 'Logged out successfully' };
+    return { message: 'Logged out successfully.' };
   }
 
   @Get('sessions')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async getSessions(@Req() req: Request) {
-    const userId = (req.user as { userId: string })?.userId;
-    const sessions = await this.usersService.getActiveSessions(userId);
+  async getSessions(@CurrentUser() user: AuthenticatedUser) {
+    const sessions = await this.usersService.getActiveSessions(user.userId);
     return sessions.map((session) =>
       this.sessionMapper.toSessionResponse(session),
     );
@@ -164,10 +175,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async revokeAllSessions(
+    @CurrentUser() user: AuthenticatedUser,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ message: string }> {
-    const userId = (req.user as { userId: string })?.userId;
     const ip = getClientIp(req.headers, req.ip);
     const userAgent = req.headers['user-agent'];
 
@@ -177,14 +188,14 @@ export class AuthController {
 
     if (refreshToken) {
       const refreshTokenHash = hashRefreshToken(refreshToken);
-      const sessions = await this.usersService.getActiveSessions(userId);
+      const sessions = await this.usersService.getActiveSessions(user.userId);
       const currentSession = sessions.find(
         (s) => s.refreshTokenHash === refreshTokenHash,
       );
 
       if (currentSession) {
         await this.usersService.globalLogout(
-          userId,
+          user.userId,
           currentSession.id,
           ip,
           userAgent,
@@ -194,21 +205,43 @@ export class AuthController {
 
     clearRefreshTokenCookie(res);
 
-    return { message: 'All other sessions revoked successfully' };
+    return { message: 'All other sessions revoked successfully.' };
+  }
+
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async logoutAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ message: string }> {
+    const ip = getClientIp(req.headers, req.ip);
+    const userAgent = req.headers['user-agent'];
+
+    await this.usersService.logoutAll(user.userId, ip, userAgent);
+    clearRefreshTokenCookie(res);
+
+    return { message: 'Logged out from all devices successfully.' };
   }
 
   @Delete('sessions/:sessionId')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async revokeSession(
+    @CurrentUser() user: AuthenticatedUser,
     @Req() req: Request,
     @Param('sessionId') sessionId: string,
   ): Promise<{ message: string }> {
-    const userId = (req.user as { userId: string })?.userId;
     const ip = getClientIp(req.headers, req.ip);
     const userAgent = req.headers['user-agent'];
 
-    await this.usersService.revokeSession(userId, sessionId, ip, userAgent);
+    await this.usersService.revokeSession(
+      user.userId,
+      sessionId,
+      ip,
+      userAgent,
+    );
 
     return { message: 'Session revoked successfully' };
   }
@@ -234,6 +267,33 @@ export class AuthController {
     await this.usersService.resendVerification(dto.email);
     return {
       message: 'If your email is registered, a verification code has been sent',
+    };
+  }
+
+  @Post('forgot-password')
+  @Throttle({ default: { limit: 3, ttl: 3600000 } }) // 3 requests per hour
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(
+    @Body(new ZodValidationPipe(forgotPasswordSchema))
+    dto: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
+    await this.usersService.forgotPassword(dto);
+    return {
+      message:
+        'If the account exists, password reset instructions have been sent.',
+    };
+  }
+
+  @Post('reset-password')
+  @Throttle({ default: { limit: 5, ttl: 3600000 } }) // 5 requests per hour
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Body(new ZodValidationPipe(resetPasswordSchema))
+    dto: ResetPasswordDto,
+  ): Promise<{ message: string }> {
+    await this.usersService.resetPassword(dto);
+    return {
+      message: 'Password has been reset successfully. Please sign in again.',
     };
   }
 }

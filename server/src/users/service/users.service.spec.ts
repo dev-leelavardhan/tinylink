@@ -7,6 +7,8 @@ import { UserProfileService } from '../use-cases/user-profile.service';
 import { UserVerifyEmailService } from '../use-cases/user-verify-email.service';
 import { UserResendVerificationService } from '../use-cases/user-resend-verification.service';
 import { UserChangePasswordService } from '../use-cases/user-change-password.service';
+import { UserForgotPasswordService } from '../use-cases/user-forgot-password.service';
+import { UserResetPasswordService } from '../use-cases/user-reset-password.service';
 import { SessionRepository } from '../repositories/session.repository';
 
 describe('UsersService', () => {
@@ -23,6 +25,8 @@ describe('UsersService', () => {
   let verifyEmailService: { verify: jest.Mock };
   let resendVerificationService: { resend: jest.Mock };
   let changePasswordService: { changePassword: jest.Mock };
+  let forgotPasswordService: { execute: jest.Mock };
+  let resetPasswordService: { execute: jest.Mock };
   let sessionRepository: { findActiveByUserId: jest.Mock };
 
   beforeEach(async () => {
@@ -38,6 +42,8 @@ describe('UsersService', () => {
     verifyEmailService = { verify: jest.fn() };
     resendVerificationService = { resend: jest.fn() };
     changePasswordService = { changePassword: jest.fn() };
+    forgotPasswordService = { execute: jest.fn() };
+    resetPasswordService = { execute: jest.fn() };
     sessionRepository = { findActiveByUserId: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -55,6 +61,8 @@ describe('UsersService', () => {
           provide: UserChangePasswordService,
           useValue: changePasswordService,
         },
+        { provide: UserForgotPasswordService, useValue: forgotPasswordService },
+        { provide: UserResetPasswordService, useValue: resetPasswordService },
         { provide: SessionRepository, useValue: sessionRepository },
       ],
     }).compile();

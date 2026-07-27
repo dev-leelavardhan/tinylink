@@ -125,6 +125,7 @@ model Analytics {
 
 enum VerificationType {
   EMAIL_VERIFICATION
+  PASSWORD_RESET
 }
 
 model VerificationOtp {
@@ -170,6 +171,9 @@ enum AuditEvent {
   SESSION_EXPIRED_ATTEMPT
   GLOBAL_LOGOUT
   PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  PASSWORD_RESET_FAILED
 }
 
 model AuditLog {

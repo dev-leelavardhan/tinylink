@@ -1,8 +1,11 @@
-import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
-import type { Request } from 'express';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 
 import { ZodValidationPipe } from '../../common/zod/common.validation';
-import { JwtAuthGuard } from '../../users/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
+import {
+  CurrentUser,
+  type AuthenticatedUser,
+} from '../../common/auth/current-user.decorator';
 import {
   analyticsQuerySchema,
   paginationQuerySchema,
@@ -21,9 +24,9 @@ export class AnalyticsController {
     @Param('urlId') urlId: string,
     @Query(new ZodValidationPipe(analyticsQuerySchema))
     query: AnalyticsQueryDto,
-    @Req() req: Request & { user: { userId: string } },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    await this.analyticsService.verifyOwnership(urlId, req.user.userId);
+    await this.analyticsService.verifyOwnership(urlId, user.userId);
     return this.analyticsService.getAggregated(urlId, query.days);
   }
 
@@ -32,9 +35,9 @@ export class AnalyticsController {
     @Param('urlId') urlId: string,
     @Query(new ZodValidationPipe(paginationQuerySchema))
     query: PaginationQueryDto,
-    @Req() req: Request & { user: { userId: string } },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    await this.analyticsService.verifyOwnership(urlId, req.user.userId);
+    await this.analyticsService.verifyOwnership(urlId, user.userId);
     return this.analyticsService.getRecentClicks(
       urlId,
       query.page,

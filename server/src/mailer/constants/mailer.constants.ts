@@ -6,6 +6,7 @@ export const MAILER_CONSTANTS = {
 
   // Email
   VERIFY_EMAIL_SUBJECT: 'Verify your email address',
+  PASSWORD_RESET_SUBJECT: 'Reset your password',
   OTP_LENGTH: 6,
 } as const;
 

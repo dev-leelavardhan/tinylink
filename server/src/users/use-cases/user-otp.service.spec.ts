@@ -86,6 +86,7 @@ describe('UserOtpService', () => {
         salt: expect.any(String),
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         expiresAt: expect.any(Date),
+        type: 'EMAIL_VERIFICATION',
       });
     });
 
@@ -130,7 +131,10 @@ describe('UserOtpService', () => {
 
       expect(result).toEqual({ email: 'test@example.com' });
       expect(redis.del).toHaveBeenCalledWith('otp:verify:user-1');
-      expect(repository.markOtpUsed).toHaveBeenCalledWith('user-1');
+      expect(repository.markOtpUsed).toHaveBeenCalledWith(
+        'user-1',
+        'EMAIL_VERIFICATION',
+      );
     });
 
     it('should fallback to DB if Redis fails', async () => {
@@ -217,7 +221,9 @@ describe('UserOtpService', () => {
 
       // Should have tried to increment attempts via multi chain
       expect(redis.multi).toHaveBeenCalled();
-      expect(redisMultiChain.incr).toHaveBeenCalledWith('otp:attempts:user-1');
+      expect(redisMultiChain.incr).toHaveBeenCalledWith(
+        'otp:attempts:otp:verify:user-1',
+      );
     });
 
     it('should block after max attempts', async () => {
@@ -246,7 +252,10 @@ describe('UserOtpService', () => {
       const otp = await service.resend('user-1', 'test@example.com');
 
       expect(otp).toHaveLength(6);
-      expect(repository.markOtpUsed).toHaveBeenCalledWith('user-1');
+      expect(repository.markOtpUsed).toHaveBeenCalledWith(
+        'user-1',
+        'EMAIL_VERIFICATION',
+      );
       expect(redis.del).toHaveBeenCalledWith('otp:verify:user-1');
     });
 

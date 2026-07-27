@@ -83,8 +83,12 @@ export const USER_LOG_MESSAGES = {
   SESSION_CREATED: 'Session created',
   SESSION_REVOKED: 'Session revoked',
   REFRESH_TOKEN_ISSUED: 'Refresh token issued',
+  LOGOUT_SUCCESS: 'User logged out',
+  LOGOUT_ALL_SUCCESS: 'All sessions revoked',
   GLOBAL_LOGOUT: 'All sessions revoked',
   PASSWORD_CHANGED: 'Password changed successfully',
+  PASSWORD_RESET_REQUESTED: 'Password reset requested',
+  PASSWORD_RESET_COMPLETED: 'Password reset completed',
   SESSION_CLEANUP_STARTED: 'Starting session cleanup',
   SESSION_CLEANUP_COMPLETED: 'Session cleanup completed',
 } as const;
@@ -115,6 +119,11 @@ export const USER_ERROR_MESSAGES = {
   OTP_RESEND_COOLDOWN: 'Please wait before requesting a new code.',
   REFRESH_TOKEN_REUSE_DETECTED:
     'Security violation: refresh token reuse detected',
-  CHANGE_PASSWORD_CURRENT_INVALID: 'Current password is incorrect',
+  CHANGE_PASSWORD_CURRENT_INVALID: 'Current password is incorrect.',
+  CHANGE_PASSWORD_REUSE:
+    'New password must be different from the current password.',
+  INVALID_PASSWORD_RESET_CODE: 'Invalid password reset code.',
+  PASSWORD_RESET_CODE_EXPIRED: 'Password reset code has expired.',
+  PASSWORD_RESET_CODE_USED: 'Password reset code has already been used.',
   SESSION_CLEANUP_FAILED: 'Session cleanup failed',
 } as const;
