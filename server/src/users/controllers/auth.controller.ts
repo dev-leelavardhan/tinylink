@@ -9,6 +9,7 @@ import {
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { type Request, type Response } from 'express';
@@ -40,6 +41,7 @@ import {
   hashRefreshToken,
 } from '../utils/auth.utils';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { USER_ERROR_MESSAGES } from '../constants/user.constants';
 
 @Controller('auth')
 @UseGuards(ThrottlerGuard)
@@ -90,7 +92,9 @@ export class AuthController {
       req.cookies as Record<string, string>,
     );
     if (!refreshToken) {
-      throw new Error('Refresh token not found');
+      throw new UnauthorizedException(
+        USER_ERROR_MESSAGES.MISSING_REFRESH_TOKEN,
+      );
     }
 
     const ip = getClientIp(req.headers, req.ip);

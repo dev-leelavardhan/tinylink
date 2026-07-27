@@ -40,6 +40,7 @@ export const USER_CONSTANTS = {
   SESSION_COOKIE_NAME: 'refresh_token',
   SESSION_COOKIE_PATH: '/auth/refresh',
   SESSION_COOKIE_MAX_AGE_MS: 7 * 24 * 60 * 60 * 1000,
+  SLIDING_SESSION_ENABLED: false,
 
   // JWT
   JWT_ISSUER: 'tinylink',
@@ -98,7 +99,10 @@ export const USER_ERROR_MESSAGES = {
   ACCOUNT_LOCKED: 'Too many failed login attempts. Try again later.',
   USER_NOT_FOUND: 'User not found',
   TOKEN_REVOKED: 'Token has been revoked',
+  MISSING_REFRESH_TOKEN: 'Authentication required.',
   INVALID_REFRESH_TOKEN: 'Invalid refresh token',
+  SESSION_EXPIRED: 'Session expired.',
+  SESSION_REVOKED: 'Session revoked.',
   EMAIL_EXISTS: 'Email already exists',
   FREE_LIMIT_REACHED: 'Free limit reached. Sign up to create more URLs.',
   INVALID_OTP: 'Invalid or expired verification code',

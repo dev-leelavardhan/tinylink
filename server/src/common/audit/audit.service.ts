@@ -22,6 +22,8 @@ export type AuditEvent =
   | 'SESSION_REVOKED'
   | 'REFRESH_TOKEN_ISSUED'
   | 'REFRESH_TOKEN_REUSE'
+  | 'REFRESH_FAILED'
+  | 'SESSION_EXPIRED_ATTEMPT'
   | 'GLOBAL_LOGOUT'
   | 'PASSWORD_CHANGED';
 
@@ -275,6 +277,36 @@ export class AuditService {
     await this.log({
       userId,
       event: 'PASSWORD_CHANGED',
+      metadata,
+      ipAddress,
+      userAgent,
+    });
+  }
+
+  async logRefreshFailed(
+    userId: string,
+    metadata?: Record<string, unknown>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.log({
+      userId,
+      event: 'REFRESH_FAILED',
+      metadata,
+      ipAddress,
+      userAgent,
+    });
+  }
+
+  async logSessionExpiredAttempt(
+    userId: string,
+    metadata?: Record<string, unknown>,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    await this.log({
+      userId,
+      event: 'SESSION_EXPIRED_ATTEMPT',
       metadata,
       ipAddress,
       userAgent,

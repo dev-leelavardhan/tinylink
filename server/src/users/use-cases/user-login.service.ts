@@ -16,6 +16,7 @@ import {
 import { type LoginUserDto } from '../dto/login-user.dto';
 import { UserRepository } from '../repositories/user.repository';
 import { SessionRepository } from '../repositories/session.repository';
+import type { SessionRefreshContext } from '../repositories/session.repository';
 import { type JwtPayload, type AuthTokens } from '../types';
 import { BruteForceService } from './brute-force.service';
 import { AuditService } from '../../common/audit/audit.service';
@@ -187,51 +188,71 @@ export class UserLoginService {
 
       const refreshTokenHash = hashRefreshToken(refreshToken);
 
-      const session =
-        await this.sessionRepository.findByRefreshTokenHash(refreshTokenHash);
-
-      if (!session) {
-        const user = await this.userRepository.findById(payload.sub);
-        if (!user) {
-          throw new UnauthorizedException(
-            USER_ERROR_MESSAGES.INVALID_REFRESH_TOKEN,
-          );
-        }
-
-        const reuseWindowMs =
-          USER_CONSTANTS.REFRESH_TOKEN_REUSE_WINDOW_MINUTES * 60 * 1000;
-        const since = new Date(Date.now() - reuseWindowMs);
-        const recentlyRevoked =
-          await this.sessionRepository.findRecentlyRevokedByUserId(
-            user.id,
-            since,
-          );
-
-        const reusedSession = recentlyRevoked.find(
-          (s) => s.refreshTokenHash === refreshTokenHash,
+      const context: SessionRefreshContext =
+        await this.sessionRepository.findSessionContextForRefresh(
+          refreshTokenHash,
         );
 
-        if (reusedSession) {
-          await this.sessionRepository.revokeAllForUser(user.id);
+      if (context.status !== 'active') {
+        const user = await this.userRepository.findById(payload.sub);
 
-          await this.auditService.logRefreshTokenReuse(user.id, {
-            reusedSessionId: reusedSession.id,
-          });
+        if (context.status === 'revoked') {
+          if (user) {
+            const reuseWindowMs =
+              USER_CONSTANTS.REFRESH_TOKEN_REUSE_WINDOW_MINUTES * 60 * 1000;
+            const since = new Date(Date.now() - reuseWindowMs);
+            const recentlyRevoked =
+              await this.sessionRepository.findRecentlyRevokedByUserId(
+                user.id,
+                since,
+              );
 
-          this.logger.warn(
-            { userId: user.id, sessionId: reusedSession.id },
-            'Refresh token reuse detected — all sessions revoked',
-          );
+            const reusedSession = recentlyRevoked.find(
+              (s) => s.refreshTokenHash === refreshTokenHash,
+            );
 
-          throw new UnauthorizedException(
-            USER_ERROR_MESSAGES.REFRESH_TOKEN_REUSE_DETECTED,
-          );
+            if (reusedSession) {
+              await this.sessionRepository.revokeAllForUser(user.id);
+
+              await this.auditService.logRefreshTokenReuse(user.id, {
+                reusedSessionId: reusedSession.id,
+              });
+
+              this.logger.warn(
+                { userId: user.id, sessionId: reusedSession.id },
+                'Refresh token reuse detected — all sessions revoked',
+              );
+
+              throw new UnauthorizedException(
+                USER_ERROR_MESSAGES.REFRESH_TOKEN_REUSE_DETECTED,
+              );
+            }
+
+            await this.auditService.logRefreshFailed(user.id, {
+              reason: 'session_revoked',
+              sessionId: context.session.id,
+            });
+          }
+
+          throw new UnauthorizedException(USER_ERROR_MESSAGES.SESSION_REVOKED);
+        }
+
+        if (context.status === 'expired') {
+          if (user) {
+            await this.auditService.logSessionExpiredAttempt(user.id, {
+              sessionId: context.session.id,
+            });
+          }
+
+          throw new UnauthorizedException(USER_ERROR_MESSAGES.SESSION_EXPIRED);
         }
 
         throw new UnauthorizedException(
           USER_ERROR_MESSAGES.INVALID_REFRESH_TOKEN,
         );
       }
+
+      const session = context.session;
 
       const user = await this.userRepository.findById(payload.sub);
       if (!user) {
@@ -250,7 +271,9 @@ export class UserLoginService {
         ? parseUserAgent(userAgent)
         : { browser: null, os: null };
 
-      const expiresAt = daysFromNow(USER_CONSTANTS.SESSION_EXPIRY_DAYS);
+      const expiresAt = USER_CONSTANTS.SLIDING_SESSION_ENABLED
+        ? daysFromNow(USER_CONSTANTS.SESSION_EXPIRY_DAYS)
+        : session.expiresAt;
 
       const newTokens = await this.generateTokens(
         user.id,
@@ -268,6 +291,7 @@ export class UserLoginService {
           operatingSystem: os,
           ipAddress: ip,
           userAgent,
+          lastUsedAt: new Date(),
           expiresAt,
         },
       );

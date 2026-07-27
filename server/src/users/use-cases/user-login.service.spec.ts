@@ -38,6 +38,7 @@ describe('UserLoginService', () => {
   const sessionRepository = {
     create: jest.fn(),
     findByRefreshTokenHash: jest.fn(),
+    findSessionContextForRefresh: jest.fn(),
     revoke: jest.fn(),
     updateLastUsed: jest.fn(),
     findActiveByUserId: jest.fn(),
@@ -67,6 +68,8 @@ describe('UserLoginService', () => {
     log: jest.fn(),
     logRefreshTokenIssued: jest.fn(),
     logRefreshTokenReuse: jest.fn(),
+    logRefreshFailed: jest.fn(),
+    logSessionExpiredAttempt: jest.fn(),
     logGlobalLogout: jest.fn(),
   };
 
@@ -276,9 +279,13 @@ describe('UserLoginService', () => {
         tokenVersion: 1,
       });
 
-      sessionRepository.findByRefreshTokenHash.mockResolvedValue({
-        id: 'session-1',
-        userId: 'user-1',
+      sessionRepository.findSessionContextForRefresh.mockResolvedValue({
+        status: 'active',
+        session: {
+          id: 'session-1',
+          userId: 'user-1',
+          expiresAt: new Date(Date.now() + 86400000),
+        },
       });
       sessionRepository.rotateSession.mockResolvedValue({ id: 'session-2' });
 
@@ -299,6 +306,8 @@ describe('UserLoginService', () => {
         expect.objectContaining({
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           refreshTokenHash: expect.any(String),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          lastUsedAt: expect.any(Date),
         }),
       );
       expect(auditService.logRefreshTokenIssued).toHaveBeenCalledWith(
@@ -320,7 +329,66 @@ describe('UserLoginService', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it('should throw UnauthorizedException for revoked token', async () => {
+    it('should throw UnauthorizedException with SESSION_REVOKED for revoked session', async () => {
+      const payload = {
+        sub: 'user-1',
+        tokenVersion: 0,
+        iss: 'tinylink',
+        aud: 'tinylink-api',
+      };
+      jwtService.verify.mockReturnValue(payload);
+
+      const user = { id: 'user-1', tokenVersion: 0 };
+      repository.findById.mockResolvedValue(user);
+
+      sessionRepository.findSessionContextForRefresh.mockResolvedValue({
+        status: 'revoked',
+        session: {
+          id: 'session-1',
+          userId: 'user-1',
+          refreshTokenHash: 'hashed-token',
+        },
+      });
+      sessionRepository.findRecentlyRevokedByUserId.mockResolvedValue([]);
+
+      await expect(
+        service.refresh('refresh-token', '127.0.0.1', 'Mozilla/5.0'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(auditService.logRefreshFailed).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ reason: 'session_revoked' }),
+      );
+    });
+
+    it('should throw UnauthorizedException with SESSION_EXPIRED for expired session', async () => {
+      const payload = {
+        sub: 'user-1',
+        tokenVersion: 0,
+        iss: 'tinylink',
+        aud: 'tinylink-api',
+      };
+      jwtService.verify.mockReturnValue(payload);
+
+      const user = { id: 'user-1', tokenVersion: 0 };
+      repository.findById.mockResolvedValue(user);
+
+      sessionRepository.findSessionContextForRefresh.mockResolvedValue({
+        status: 'expired',
+        session: { id: 'session-1', userId: 'user-1' },
+      });
+
+      await expect(
+        service.refresh('refresh-token', '127.0.0.1', 'Mozilla/5.0'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(auditService.logSessionExpiredAttempt).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ sessionId: 'session-1' }),
+      );
+    });
+
+    it('should throw UnauthorizedException for token version mismatch', async () => {
       const payload = {
         sub: 'user-1',
         tokenVersion: 1,
@@ -332,9 +400,13 @@ describe('UserLoginService', () => {
       const user = { id: 'user-1', tokenVersion: 0 };
       repository.findById.mockResolvedValue(user);
 
-      sessionRepository.findByRefreshTokenHash.mockResolvedValue({
-        id: 'session-1',
-        userId: 'user-1',
+      sessionRepository.findSessionContextForRefresh.mockResolvedValue({
+        status: 'active',
+        session: {
+          id: 'session-1',
+          userId: 'user-1',
+          expiresAt: new Date(Date.now() + 86400000),
+        },
       });
 
       await expect(
@@ -342,7 +414,7 @@ describe('UserLoginService', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
-    it('should throw UnauthorizedException for invalid session', async () => {
+    it('should throw UnauthorizedException for not_found session', async () => {
       const payload = {
         sub: 'user-1',
         tokenVersion: 0,
@@ -351,7 +423,9 @@ describe('UserLoginService', () => {
       };
       jwtService.verify.mockReturnValue(payload);
 
-      sessionRepository.findByRefreshTokenHash.mockResolvedValue(null);
+      sessionRepository.findSessionContextForRefresh.mockResolvedValue({
+        status: 'not_found',
+      });
       sessionRepository.findRecentlyRevokedByUserId.mockResolvedValue([]);
 
       await expect(

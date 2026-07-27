@@ -6,6 +6,7 @@ describe('SessionRepository', () => {
   let repository: SessionRepository;
 
   const prisma = {
+    $transaction: jest.fn(),
     session: {
       create: jest.fn(),
       findUnique: jest.fn(),
@@ -149,6 +150,82 @@ describe('SessionRepository', () => {
         },
       });
       expect(result).toBe(2);
+    });
+  });
+
+  describe('findSessionContextForRefresh', () => {
+    it('should return active session', async () => {
+      const session = {
+        id: 'session-1',
+        refreshTokenHash: 'hash',
+        revokedAt: null,
+        expiresAt: new Date(Date.now() + 86400000),
+      };
+      prisma.session.findFirst.mockResolvedValue(session);
+
+      const result = await repository.findSessionContextForRefresh('hash');
+
+      expect(result).toEqual({ status: 'active', session });
+    });
+
+    it('should return expired session', async () => {
+      const session = {
+        id: 'session-1',
+        refreshTokenHash: 'hash',
+        revokedAt: null,
+        expiresAt: new Date(Date.now() - 86400000),
+      };
+      prisma.session.findFirst.mockResolvedValue(session);
+
+      const result = await repository.findSessionContextForRefresh('hash');
+
+      expect(result).toEqual({ status: 'expired', session });
+    });
+
+    it('should return revoked session', async () => {
+      const session = {
+        id: 'session-1',
+        refreshTokenHash: 'hash',
+        revokedAt: new Date(),
+        expiresAt: new Date(Date.now() + 86400000),
+      };
+      prisma.session.findFirst.mockResolvedValue(session);
+
+      const result = await repository.findSessionContextForRefresh('hash');
+
+      expect(result).toEqual({ status: 'revoked', session });
+    });
+
+    it('should return not_found when no session exists', async () => {
+      prisma.session.findFirst.mockResolvedValue(null);
+
+      const result = await repository.findSessionContextForRefresh('hash');
+
+      expect(result).toEqual({ status: 'not_found' });
+    });
+  });
+
+  describe('rotateSession', () => {
+    it('should revoke old session and create new session atomically', async () => {
+      const oldSession = { id: 'session-1' };
+      const newSession = { id: 'session-2', refreshTokenHash: 'new-hash' };
+      prisma.$transaction = jest
+        .fn()
+        .mockResolvedValue([oldSession, newSession]);
+
+      const newSessionData = {
+        user: { connect: { id: 'user-1' } },
+        refreshTokenHash: 'new-hash',
+        expiresAt: new Date(),
+      };
+
+      const result = await repository.rotateSession(
+        'session-1',
+        newSessionData,
+      );
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(result).toEqual(newSession);
     });
   });
 });

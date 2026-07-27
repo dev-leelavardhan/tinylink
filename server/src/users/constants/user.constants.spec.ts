@@ -44,6 +44,7 @@ describe('USER_CONSTANTS', () => {
     expect(USER_CONSTANTS.SESSION_EXPIRY_DAYS).toBe(7);
     expect(USER_CONSTANTS.SESSION_COOKIE_NAME).toBe('refresh_token');
     expect(USER_CONSTANTS.SESSION_COOKIE_PATH).toBe('/auth/refresh');
+    expect(USER_CONSTANTS.SLIDING_SESSION_ENABLED).toBe(false);
   });
 
   it('should have login response constants', () => {
@@ -80,7 +81,12 @@ describe('USER_ERROR_MESSAGES', () => {
     expect(USER_ERROR_MESSAGES.ACCOUNT_LOCKED).toBeDefined();
     expect(USER_ERROR_MESSAGES.USER_NOT_FOUND).toBeDefined();
     expect(USER_ERROR_MESSAGES.TOKEN_REVOKED).toBeDefined();
+    expect(USER_ERROR_MESSAGES.MISSING_REFRESH_TOKEN).toBe(
+      'Authentication required.',
+    );
     expect(USER_ERROR_MESSAGES.INVALID_REFRESH_TOKEN).toBeDefined();
+    expect(USER_ERROR_MESSAGES.SESSION_EXPIRED).toBe('Session expired.');
+    expect(USER_ERROR_MESSAGES.SESSION_REVOKED).toBe('Session revoked.');
     expect(USER_ERROR_MESSAGES.EMAIL_EXISTS).toBeDefined();
     expect(USER_ERROR_MESSAGES.FREE_LIMIT_REACHED).toBeDefined();
     expect(USER_ERROR_MESSAGES.INVALID_OTP).toBeDefined();

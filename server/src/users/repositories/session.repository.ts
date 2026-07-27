@@ -3,6 +3,12 @@ import { type Prisma, type Session } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
 
+export type SessionRefreshContext =
+  | { status: 'active'; session: Session }
+  | { status: 'expired'; session: Session }
+  | { status: 'revoked'; session: Session }
+  | { status: 'not_found' };
+
 @Injectable()
 export class SessionRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -23,6 +29,29 @@ export class SessionRepository {
         expiresAt: { gt: new Date() },
       },
     });
+  }
+
+  async findSessionContextForRefresh(
+    refreshTokenHash: string,
+  ): Promise<SessionRefreshContext> {
+    const session = await this.prisma.session.findFirst({
+      where: { refreshTokenHash },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!session) {
+      return { status: 'not_found' };
+    }
+
+    if (session.revokedAt) {
+      return { status: 'revoked', session };
+    }
+
+    if (session.expiresAt <= new Date()) {
+      return { status: 'expired', session };
+    }
+
+    return { status: 'active', session };
   }
 
   findActiveByUserId(userId: string): Promise<Session[]> {
@@ -101,17 +130,18 @@ export class SessionRepository {
     });
   }
 
-  rotateSession(
+  async rotateSession(
     oldSessionId: string,
     newSessionData: Prisma.SessionCreateInput,
   ): Promise<Session> {
-    return this.prisma.$transaction([
+    const [, newSession] = await this.prisma.$transaction([
       this.prisma.session.update({
         where: { id: oldSessionId },
         data: { revokedAt: new Date() },
       }),
       this.prisma.session.create({ data: newSessionData }),
-    ]) as unknown as Promise<Session>;
+    ]);
+    return newSession;
   }
 
   deleteRevokedOlderThan(date: Date): Promise<Prisma.BatchPayload> {
