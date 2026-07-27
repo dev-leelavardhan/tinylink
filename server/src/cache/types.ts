@@ -8,3 +8,8 @@ export interface CachedUrl {
   lastAccessedAt: string | null;
   deletedAt: string | null; // ISO 8601 string
 }
+
+export type CacheResult =
+  | { status: 'hit'; data: CachedUrl }
+  | { status: 'negative' }
+  | { status: 'miss' };

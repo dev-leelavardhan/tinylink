@@ -19,7 +19,10 @@ COPY . .
 
 RUN pnpm prisma:generate
 RUN pnpm build
-RUN pnpm prune --prod
+
+# Keep all dependencies including prisma CLI (needed for migrate deploy at runtime).
+# Prisma CLI is in devDependencies but required at runtime for migrations.
+# For a smaller image, consider a separate migration step/job instead.
 
 FROM base AS production
 
@@ -34,10 +37,12 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 USER node
 
 EXPOSE 3000
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "dist/main.js"]
+CMD ["/app/docker-entrypoint.sh"]

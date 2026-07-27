@@ -8,6 +8,10 @@ describe('envSchema (unit)', () => {
     JWT_REFRESH_SECRET: 'b'.repeat(32),
     BASE_URL: 'http://localhost:3000',
     IP_HASH_SALT: 'a'.repeat(16),
+    MAILER_HOST: 'smtp.example.com',
+    MAILER_USER: 'user',
+    MAILER_PASS: 'pass',
+    MAILER_FROM: 'noreply@example.com',
   };
 
   it('passes with valid env', () => {

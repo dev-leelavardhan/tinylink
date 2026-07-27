@@ -102,14 +102,31 @@ export class AnalyticsRepository {
     });
   }
 
-  deleteOldAnalytics(retentionDate: Date) {
-    return this.prisma.analytics.deleteMany({
-      where: {
-        timestamp: {
-          lt: retentionDate,
-        },
-      },
-    });
+  async deleteOldAnalytics(
+    retentionDate: Date,
+    batchSize: number = 10000,
+  ): Promise<number> {
+    let totalDeleted = 0;
+
+    while (true) {
+      const result = await this.prisma.$executeRaw`
+        DELETE FROM "Analytics"
+        WHERE "id" IN (
+          SELECT "id" FROM "Analytics"
+          WHERE "timestamp" < ${retentionDate}
+          LIMIT ${batchSize}
+        )
+      `;
+
+      totalDeleted += result;
+
+      if (result < batchSize) break;
+
+      // Brief pause to avoid overwhelming the database
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    return totalDeleted;
   }
 
   private analyticsFilter(

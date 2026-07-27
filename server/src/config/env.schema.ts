@@ -44,12 +44,12 @@ export const envSchema = z
     CORS_ORIGIN: z.string().optional(),
 
     // Mailer configuration
-    MAILER_HOST: z.string().optional(),
+    MAILER_HOST: z.string().min(1, 'MAILER_HOST is required'),
     MAILER_PORT: z.coerce.number().int().default(587),
     MAILER_SECURE: z.enum(['true', 'false']).default('false'),
-    MAILER_USER: z.string().optional(),
-    MAILER_PASS: z.string().optional(),
-    MAILER_FROM: z.string().email().optional(),
+    MAILER_USER: z.string().min(1, 'MAILER_USER is required'),
+    MAILER_PASS: z.string().min(1, 'MAILER_PASS is required'),
+    MAILER_FROM: z.string().email('MAILER_FROM must be a valid email'),
   })
   .superRefine((env, ctx) => {
     if (env.SHORT_CODE_STRATEGY === 'hashids' && !env.SHORT_CODE_HASHIDS_SALT) {

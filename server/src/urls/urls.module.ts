@@ -11,6 +11,7 @@ import { UrlCreateService } from './use-cases/url-create.service';
 import { UrlRedirectService } from './use-cases/url-redirect.service';
 import { UrlQrService } from './use-cases/url-qr.service';
 import { UrlRepository } from './repositories/url.repository';
+import { UrlSlugRepository } from './repositories/url-slug.repository';
 import { UrlMapper } from './mappers/urls.mapper';
 import {
   RedirectController,
@@ -30,6 +31,7 @@ import { QrController } from './controllers/qr.controller';
     UrlRedirectService,
     UrlQrService,
     UrlRepository,
+    UrlSlugRepository,
     UrlMapper,
   ],
 })

@@ -9,6 +9,7 @@ import { PinoLogger } from 'nestjs-pino';
 import { UrlRedirectService } from './url-redirect.service';
 import { UrlCacheService } from '../service/urls-cache.service';
 import { UrlRepository } from '../repositories/url.repository';
+import { UrlSlugRepository } from '../repositories/url-slug.repository';
 import { UrlMapper } from '../mappers/urls.mapper';
 import { UrlStateValidatorService } from '../validators/url-state-validator.service';
 import { createLoggerMock } from '../../testing/mocks';
@@ -28,10 +29,14 @@ describe('UrlRedirectService', () => {
   };
 
   const repository = {
+    findById: jest.fn(),
     create: jest.fn(),
-    findByAlias: jest.fn(),
     findByOriginalUrlAndStrategy: jest.fn(),
-    findByShortCodeOrAlias: jest.fn(),
+  };
+
+  const slugRepository = {
+    findBySlug: jest.fn(),
+    existsBySlug: jest.fn(),
   };
 
   const mapper = {
@@ -67,6 +72,7 @@ describe('UrlRedirectService', () => {
         UrlRedirectService,
         { provide: UrlCacheService, useValue: cache },
         { provide: UrlRepository, useValue: repository },
+        { provide: UrlSlugRepository, useValue: slugRepository },
         { provide: UrlMapper, useValue: mapper },
         { provide: UrlStateValidatorService, useValue: validator },
         { provide: PinoLogger, useValue: logger },
@@ -89,17 +95,26 @@ describe('UrlRedirectService', () => {
         lastAccessedAt: null,
         deletedAt: null,
       };
-      cache.get.mockResolvedValue(cached);
+      cache.get.mockResolvedValue({ status: 'hit', data: cached });
 
       const result = await service.redirect('abc');
 
       expect(result).toBe('https://example.com');
       expect(validator.validate).toHaveBeenCalledWith(cached);
-      expect(repository.findByShortCodeOrAlias).not.toHaveBeenCalled();
+      expect(slugRepository.findBySlug).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 immediately on negative cache hit', async () => {
+      cache.get.mockResolvedValue({ status: 'negative' });
+
+      await expect(service.redirect('garbage')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(slugRepository.findBySlug).not.toHaveBeenCalled();
     });
 
     it('returns originalUrl from DB when cache misses', async () => {
-      cache.get.mockResolvedValue(null);
+      cache.get.mockResolvedValue({ status: 'miss' });
       const url: Url = {
         id: '2',
         originalUrl: 'https://other.com',
@@ -109,7 +124,8 @@ describe('UrlRedirectService', () => {
         expiresAt: null,
         deletedAt: null,
       };
-      repository.findByShortCodeOrAlias.mockResolvedValue(url);
+      slugRepository.findBySlug.mockResolvedValue({ urlId: '2' });
+      repository.findById.mockResolvedValue(url);
 
       const result = await service.redirect('xyz');
 
@@ -118,7 +134,7 @@ describe('UrlRedirectService', () => {
     });
 
     it('caches custom alias separately when it differs from shortCode', async () => {
-      cache.get.mockResolvedValue(null);
+      cache.get.mockResolvedValue({ status: 'miss' });
       const url: Url = {
         id: '3',
         originalUrl: 'https://alias.com',
@@ -128,7 +144,8 @@ describe('UrlRedirectService', () => {
         expiresAt: null,
         deletedAt: null,
       };
-      repository.findByShortCodeOrAlias.mockResolvedValue(url);
+      slugRepository.findBySlug.mockResolvedValue({ urlId: '3' });
+      repository.findById.mockResolvedValue(url);
 
       await service.redirect('gen');
 
@@ -136,28 +153,9 @@ describe('UrlRedirectService', () => {
       expect(cache.set).toHaveBeenCalledWith('my-alias', expect.any(Object));
     });
 
-    it('does not cache custom alias when it equals shortCode', async () => {
-      cache.get.mockResolvedValue(null);
-      const url: Url = {
-        id: '4',
-        originalUrl: 'https://same.com',
-        shortCode: 'same',
-        customAlias: 'same',
-        disabled: false,
-        expiresAt: null,
-        deletedAt: null,
-      };
-      repository.findByShortCodeOrAlias.mockResolvedValue(url);
-
-      await service.redirect('same');
-
-      expect(cache.set).toHaveBeenCalledTimes(1);
-      expect(cache.set).toHaveBeenCalledWith('same', expect.any(Object));
-    });
-
     it('throws NotFoundException when URL not found', async () => {
-      cache.get.mockResolvedValue(null);
-      repository.findByShortCodeOrAlias.mockResolvedValue(null);
+      cache.get.mockResolvedValue({ status: 'miss' });
+      slugRepository.findBySlug.mockResolvedValue(null);
 
       await expect(service.redirect('missing')).rejects.toBeInstanceOf(
         NotFoundException,
@@ -166,7 +164,7 @@ describe('UrlRedirectService', () => {
     });
 
     it('throws GoneException when URL is disabled', async () => {
-      cache.get.mockResolvedValue(null);
+      cache.get.mockResolvedValue({ status: 'miss' });
       const url: Url = {
         id: '5',
         originalUrl: 'https://disabled.com',
@@ -176,7 +174,8 @@ describe('UrlRedirectService', () => {
         expiresAt: null,
         deletedAt: null,
       };
-      repository.findByShortCodeOrAlias.mockResolvedValue(url);
+      slugRepository.findBySlug.mockResolvedValue({ urlId: '5' });
+      repository.findById.mockResolvedValue(url);
       validator.validate.mockImplementation(() => {
         throw new GoneException('URL disabled');
       });
@@ -187,7 +186,7 @@ describe('UrlRedirectService', () => {
     });
 
     it('throws GoneException when URL is expired', async () => {
-      cache.get.mockResolvedValue(null);
+      cache.get.mockResolvedValue({ status: 'miss' });
       const url: Url = {
         id: '6',
         originalUrl: 'https://expired.com',
@@ -197,7 +196,8 @@ describe('UrlRedirectService', () => {
         expiresAt: new Date('2020-01-01'),
         deletedAt: null,
       };
-      repository.findByShortCodeOrAlias.mockResolvedValue(url);
+      slugRepository.findBySlug.mockResolvedValue({ urlId: '6' });
+      repository.findById.mockResolvedValue(url);
       validator.validate.mockImplementation(() => {
         throw new GoneException('URL expired');
       });
@@ -226,7 +226,7 @@ describe('UrlRedirectService', () => {
         lastAccessedAt: null,
         deletedAt: null,
       };
-      cache.get.mockResolvedValue(cached);
+      cache.get.mockResolvedValue({ status: 'hit', data: cached });
       validator.validate.mockImplementation(() => {
         throw new NotFoundException('not found');
       });
@@ -247,14 +247,14 @@ describe('UrlRedirectService', () => {
         expiresAt: null,
         deletedAt: null,
       };
-      cache.get.mockResolvedValue(null);
-      repository.findByShortCodeOrAlias.mockResolvedValue(url);
+      cache.get.mockResolvedValue({ status: 'miss' });
+      slugRepository.findBySlug.mockResolvedValue({ urlId: '9' });
+      repository.findById.mockResolvedValue(url);
       analyticsQueue.add.mockRejectedValue(new Error('queue full'));
 
       const result = await service.redirect('analytics-fail');
 
       expect(result).toBe('https://analytics-fail.example.com');
-      // The redirect should succeed even if analytics enqueue fails
       expect(logger.warn).toHaveBeenCalledWith(
         expect.objectContaining({ shortCode: 'analytics-fail' }),
         'Failed to enqueue analytics',

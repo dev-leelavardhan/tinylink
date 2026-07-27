@@ -3,8 +3,6 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { PinoLogger } from 'nestjs-pino';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
@@ -16,7 +14,6 @@ import {
 } from '../constants/user.constants';
 import { type RegisterUserDto } from '../dto/register-user.dto';
 import { UserRepository } from '../repositories/user.repository';
-import { type AuthTokens, type JwtPayload } from '../types';
 import { UserOtpService } from './user-otp.service';
 import { MailerService } from '../../mailer/mailer.service';
 
@@ -24,8 +21,6 @@ import { MailerService } from '../../mailer/mailer.service';
 export class UserRegisterService {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
     private readonly otpService: UserOtpService,
     private readonly mailerService: MailerService,
     private readonly logger: PinoLogger,
@@ -33,7 +28,9 @@ export class UserRegisterService {
     this.logger.setContext(UserRegisterService.name);
   }
 
-  async register(dto: RegisterUserDto): Promise<AuthTokens> {
+  async register(
+    dto: RegisterUserDto,
+  ): Promise<{ message: string; email: string }> {
     this.logger.info('Starting registration');
 
     const passwordHash = await argon2.hash(dto.password, {
@@ -62,7 +59,11 @@ export class UserRegisterService {
         );
       }
 
-      return this.generateTokens(user.id, user.tokenVersion);
+      return {
+        message:
+          'Registration successful. Please check your email to verify your account.',
+        email: user.email,
+      };
     } catch (error: unknown) {
       if (
         error instanceof PrismaClientKnownRequestError &&
@@ -108,30 +109,5 @@ export class UserRegisterService {
       html,
       text,
     });
-  }
-
-  private async generateTokens(
-    userId: string,
-    tokenVersion: number,
-  ): Promise<AuthTokens> {
-    const payload: JwtPayload = {
-      sub: userId,
-      tokenVersion,
-      iss: USER_CONSTANTS.JWT_ISSUER,
-      aud: USER_CONSTANTS.JWT_AUDIENCE,
-    };
-
-    const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
-        secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
-        expiresIn: USER_CONSTANTS.ACCESS_TOKEN_EXPIRY,
-      }),
-      this.jwtService.signAsync(payload, {
-        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-        expiresIn: USER_CONSTANTS.REFRESH_TOKEN_EXPIRY,
-      }),
-    ]);
-
-    return { accessToken, refreshToken };
   }
 }

@@ -10,6 +10,8 @@ import { pinoConfig } from './logger/pino.config';
 
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { ThrottlerStorageModule } from './common/throttler/throttler-storage.module';
+import { ThrottlerRedisStorage } from './common/throttler/throttler-redis-storage';
 
 import { HealthModule } from './health/health.module';
 import { AnalyticsModule } from './analytics/analytics.module';
@@ -23,12 +25,19 @@ import { UsersModule } from './users/users.module';
       cache: true,
       load: [configuration],
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 60,
-      },
-    ]),
+    ThrottlerModule.forRootAsync({
+      imports: [ThrottlerStorageModule],
+      inject: [ThrottlerRedisStorage],
+      useFactory: (storage: ThrottlerRedisStorage) => ({
+        storage,
+        throttlers: [
+          {
+            ttl: 60000,
+            limit: 60,
+          },
+        ],
+      }),
+    }),
     LoggerModule.forRoot(pinoConfig),
     PrismaModule,
     RedisModule,

@@ -20,7 +20,7 @@ describe('AnalyticsCleanupService', () => {
 
   beforeEach(async () => {
     repository = {
-      deleteOldAnalytics: jest.fn().mockResolvedValue({ count: 100 }),
+      deleteOldAnalytics: jest.fn().mockResolvedValue(100),
     };
 
     urlRepository = {

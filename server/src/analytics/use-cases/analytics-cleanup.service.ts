@@ -29,12 +29,12 @@ export class AnalyticsCleanupService {
 
       const retentionDate = daysAgo(ANALYTICS_CONSTANTS.DEFAULT_RETENTION_DAYS);
 
-      const deletedAnalytics =
+      const deletedCount =
         await this.repository.deleteOldAnalytics(retentionDate);
 
       this.logger.info(
         {
-          deletedCount: deletedAnalytics.count,
+          deletedCount,
           retentionDate,
         },
         'Old analytics deleted',

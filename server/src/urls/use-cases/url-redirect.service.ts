@@ -11,6 +11,7 @@ import {
   URL_REDIRECT_ERROR_MESSAGES,
 } from '../constants/url.constants';
 import { UrlRepository } from '../repositories/url.repository';
+import { UrlSlugRepository } from '../repositories/url-slug.repository';
 import { UrlMapper } from '../mappers/urls.mapper';
 import { UrlStateValidatorService } from '../validators/url-state-validator.service';
 import { AnalyticsQueue } from '../../analytics/queue/analytics.queue';
@@ -21,6 +22,7 @@ export class UrlRedirectService {
   constructor(
     private readonly cache: UrlCacheService,
     private readonly urlRepository: UrlRepository,
+    private readonly urlSlugRepository: UrlSlugRepository,
     private readonly urlMapper: UrlMapper,
     private readonly validator: UrlStateValidatorService,
     private readonly logger: PinoLogger,
@@ -40,26 +42,31 @@ export class UrlRedirectService {
     try {
       const cached = await this.cache.get(shortCode);
 
-      if (cached) {
-        this.validator.validate(cached);
+      if (cached.status === 'hit') {
+        this.validator.validate(cached.data);
 
         this.logger.info(
           {
-            id: cached.id,
+            id: cached.data.id,
             shortCode,
             cached: true,
           },
           URL_REDIRECT_LOG_MESSAGES.REDIRECT_SUCCESS,
         );
 
-        this.enqueueClick(cached.id, shortCode, requestMeta);
+        this.enqueueClick(cached.data.id, shortCode, requestMeta);
 
-        return cached.originalUrl;
+        return cached.data.originalUrl;
       }
 
-      const url = await this.urlRepository.findByShortCodeOrAlias(shortCode);
+      if (cached.status === 'negative') {
+        throw new NotFoundException(URL_REDIRECT_ERROR_MESSAGES.URL_NOT_FOUND);
+      }
 
-      if (!url) {
+      const slug = await this.urlSlugRepository.findBySlug(shortCode);
+      const url = slug ? await this.urlRepository.findById(slug.urlId) : null;
+
+      if (!url || url.deletedAt) {
         await this.cache.setNegative(shortCode);
         throw new NotFoundException(URL_REDIRECT_ERROR_MESSAGES.URL_NOT_FOUND);
       }

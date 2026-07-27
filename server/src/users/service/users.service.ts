@@ -6,7 +6,6 @@ import { type ChangePasswordDto } from '../dto/change-password.dto';
 import { type ForgotPasswordDto } from '../dto/forgot-password.dto';
 import { type ResetPasswordDto } from '../dto/reset-password.dto';
 import { type UserProfileResponse } from '../mappers/types';
-import { type AuthTokens } from '../types';
 import {
   UserLoginService,
   type LoginResult,
@@ -34,7 +33,7 @@ export class UsersService {
     private readonly sessionRepository: SessionRepository,
   ) {}
 
-  register(dto: RegisterUserDto): Promise<AuthTokens> {
+  register(dto: RegisterUserDto): Promise<{ message: string; email: string }> {
     return this.registerService.register(dto);
   }
 

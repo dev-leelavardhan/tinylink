@@ -78,6 +78,9 @@ export class UserOtpService {
     otp: string,
     type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' = 'EMAIL_VERIFICATION',
   ): Promise<{ email: string } | null> {
+    const keyPrefix =
+      type === 'PASSWORD_RESET' ? 'otp:reset:' : USER_CONSTANTS.OTP_KEY_PREFIX;
+
     // Check rate limiting first
     const isRateLimited = await this.checkRateLimit(userId);
     if (isRateLimited) {
@@ -87,15 +90,12 @@ export class UserOtpService {
     }
 
     // Check attempts limit
-    const attemptsOk = await this.checkAttempts(userId);
+    const attemptsOk = await this.checkAttempts(userId, keyPrefix);
     if (!attemptsOk) {
       this.logger.warn({ userId }, USER_LOG_MESSAGES.OTP_MAX_ATTEMPTS_REACHED);
       await this.auditService.logOtpMaxAttempts(userId);
       return null;
     }
-
-    const keyPrefix =
-      type === 'PASSWORD_RESET' ? 'otp:reset:' : USER_CONSTANTS.OTP_KEY_PREFIX;
 
     // Try Redis first (fast path)
     let result = await this.verifyFromRedis(userId, otp, keyPrefix);
@@ -278,8 +278,11 @@ export class UserOtpService {
     }
   }
 
-  private async checkAttempts(userId: string): Promise<boolean> {
-    const attemptsKey = `otp:attempts:${userId}`;
+  private async checkAttempts(
+    userId: string,
+    keyPrefix: string = USER_CONSTANTS.OTP_KEY_PREFIX,
+  ): Promise<boolean> {
+    const attemptsKey = `otp:attempts:${keyPrefix}${userId}`;
 
     try {
       const current = await this.redis.get(attemptsKey);
@@ -316,8 +319,11 @@ export class UserOtpService {
     }
   }
 
-  private async resetAttempts(userId: string): Promise<void> {
-    const attemptsKey = `otp:attempts:${userId}`;
+  private async resetAttempts(
+    userId: string,
+    keyPrefix: string = USER_CONSTANTS.OTP_KEY_PREFIX,
+  ): Promise<void> {
+    const attemptsKey = `otp:attempts:${keyPrefix}${userId}`;
 
     try {
       await this.redis.del(attemptsKey);

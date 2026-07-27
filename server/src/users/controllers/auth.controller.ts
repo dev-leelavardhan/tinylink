@@ -38,7 +38,6 @@ import {
   type ResetPasswordDto,
 } from '../dto/reset-password.dto';
 import { UsersService } from '../service/users.service';
-import { type AuthTokens } from '../types';
 import { type LoginResult } from '../use-cases/user-login.service';
 import { SessionMapper } from '../mappers/session.mapper';
 import {
@@ -68,7 +67,7 @@ export class AuthController {
   async register(
     @Body(new ZodValidationPipe(registerUserSchema))
     dto: RegisterUserDto,
-  ): Promise<AuthTokens> {
+  ): Promise<{ message: string; email: string }> {
     return this.usersService.register(dto);
   }
 

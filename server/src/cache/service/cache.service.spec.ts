@@ -51,26 +51,26 @@ describe('CacheService', () => {
   });
 
   describe('get', () => {
-    it('should return null on cache miss', async () => {
+    it('should return miss on cache miss', async () => {
       redis.get.mockResolvedValue(null);
 
       const result = await service.get('test-code');
 
-      expect(result).toBeNull();
+      expect(result).toEqual({ status: 'miss' });
       expect(redis.get).toHaveBeenCalledWith(
         `${CACHE_CONSTANTS.KEY_PREFIX}test-code`,
       );
     });
 
-    it('should return null on negative cache hit', async () => {
+    it('should return negative on negative cache hit', async () => {
       redis.get.mockResolvedValue(CACHE_CONSTANTS.NEGATIVE_SENTINEL);
 
       const result = await service.get('test-code');
 
-      expect(result).toBeNull();
+      expect(result).toEqual({ status: 'negative' });
     });
 
-    it('should return parsed CachedUrl on cache hit', async () => {
+    it('should return hit with parsed CachedUrl on cache hit', async () => {
       const cachedData = {
         id: '1',
         originalUrl: 'https://example.com',
@@ -84,23 +84,23 @@ describe('CacheService', () => {
 
       const result = await service.get('test-code');
 
-      expect(result).toEqual(cachedData);
+      expect(result).toEqual({ status: 'hit', data: cachedData });
     });
 
-    it('should return null on parse error', async () => {
+    it('should return miss on parse error', async () => {
       redis.get.mockResolvedValue('invalid-json');
 
       const result = await service.get('test-code');
 
-      expect(result).toBeNull();
+      expect(result).toEqual({ status: 'miss' });
     });
 
-    it('should return null on Redis error', async () => {
+    it('should return miss on Redis error', async () => {
       redis.get.mockRejectedValue(new Error('Redis connection failed'));
 
       const result = await service.get('test-code');
 
-      expect(result).toBeNull();
+      expect(result).toEqual({ status: 'miss' });
       expect(logger.warn).toHaveBeenCalled();
     });
   });

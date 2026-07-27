@@ -5,7 +5,7 @@ import {
   CACHE_CONSTANTS,
   CACHE_LOG_MESSAGES,
 } from '../constants/cache.constants';
-import { CachedUrl } from '../types';
+import { CachedUrl, CacheResult } from '../types';
 
 @Injectable()
 export class CacheService {
@@ -26,27 +26,27 @@ export class CacheService {
   }
 
   /**
-   * Cache-aside GET: returns CachedUrl on hit, null on miss or negative cache hit.
+   * Cache-aside GET: returns hit with data, negative (known not-found), or miss.
    */
-  async get(shortCode: string): Promise<CachedUrl | null> {
+  async get(shortCode: string): Promise<CacheResult> {
     try {
       const raw = await this.redis.get(this.key(shortCode));
 
-      if (raw === null || raw === CACHE_CONSTANTS.NEGATIVE_SENTINEL) {
-        this.logger.debug(
-          { shortCode },
-          raw === null
-            ? CACHE_LOG_MESSAGES.CACHE_MISS
-            : CACHE_LOG_MESSAGES.CACHE_HIT_NEGATIVE,
-        );
-        return null;
+      if (raw === null) {
+        this.logger.debug({ shortCode }, CACHE_LOG_MESSAGES.CACHE_MISS);
+        return { status: 'miss' };
+      }
+
+      if (raw === CACHE_CONSTANTS.NEGATIVE_SENTINEL) {
+        this.logger.debug({ shortCode }, CACHE_LOG_MESSAGES.CACHE_HIT_NEGATIVE);
+        return { status: 'negative' };
       }
 
       this.logger.debug({ shortCode }, CACHE_LOG_MESSAGES.CACHE_HIT);
-      return JSON.parse(raw) as CachedUrl;
+      return { status: 'hit', data: JSON.parse(raw) as CachedUrl };
     } catch (err: unknown) {
       this.logger.warn({ shortCode, err }, CACHE_LOG_MESSAGES.CACHE_GET_FAILED);
-      return null;
+      return { status: 'miss' };
     }
   }
 

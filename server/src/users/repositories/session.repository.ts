@@ -133,15 +133,40 @@ export class SessionRepository {
   async rotateSession(
     oldSessionId: string,
     newSessionData: Prisma.SessionCreateInput,
+    userId: string,
+  ): Promise<{ session: Session; newTokenVersion: number }> {
+    return this.prisma.$transaction(async (tx) => {
+      const revokedAt = new Date();
+
+      const updatedCount: number =
+        await tx.$executeRaw`UPDATE "Session" SET "revokedAt" = ${revokedAt} WHERE "id" = ${oldSessionId} AND "revokedAt" IS NULL`;
+
+      if (updatedCount === 0) {
+        throw new Error(
+          'Session already revoked (concurrent refresh detected)',
+        );
+      }
+
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: { tokenVersion: { increment: 1 } },
+        select: { tokenVersion: true },
+      });
+
+      const session = await tx.session.create({ data: newSessionData });
+
+      return { session, newTokenVersion: updatedUser.tokenVersion };
+    });
+  }
+
+  updateRefreshTokenHash(
+    sessionId: string,
+    refreshTokenHash: string,
   ): Promise<Session> {
-    const [, newSession] = await this.prisma.$transaction([
-      this.prisma.session.update({
-        where: { id: oldSessionId },
-        data: { revokedAt: new Date() },
-      }),
-      this.prisma.session.create({ data: newSessionData }),
-    ]);
-    return newSession;
+    return this.prisma.session.update({
+      where: { id: sessionId },
+      data: { refreshTokenHash },
+    });
   }
 
   deleteRevokedOlderThan(date: Date): Promise<Prisma.BatchPayload> {

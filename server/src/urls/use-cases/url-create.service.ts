@@ -21,6 +21,7 @@ import {
 import { CreateUrlDto } from '../dto/create-url.dto';
 import { UrlMapper } from '../mappers/urls.mapper';
 import { UrlRepository } from '../repositories/url.repository';
+import { UrlSlugRepository } from '../repositories/url-slug.repository';
 import { UrlCacheService } from '../service/urls-cache.service';
 import { type CreateUrlResponseDto } from '../types';
 import { isUniqueConstraintOn } from '../utils/helpers';
@@ -33,6 +34,7 @@ export class UrlCreateService {
     private readonly aliasValidator: AliasValidatorService,
     private readonly cache: UrlCacheService,
     private readonly urlRepository: UrlRepository,
+    private readonly urlSlugRepository: UrlSlugRepository,
     private readonly urlMapper: UrlMapper,
     private readonly redis: RedisService,
     private readonly logger: PinoLogger,
@@ -75,14 +77,24 @@ export class UrlCreateService {
         }));
 
       try {
-        const url = await this.urlRepository.create({
-          originalUrl: dto.originalUrl,
-          shortCode,
-          customAlias: alias,
-          expiresAt: dto.expiresAt,
-          strategy,
-          ...(userId ? { user: { connect: { id: userId } } } : {}),
-        });
+        const slugEntries = [{ slug: shortCode }];
+        if (alias && alias !== shortCode) {
+          slugEntries.push({ slug: alias });
+        }
+
+        // Create URL and slugs in a single transaction.
+        // The UrlSlug.slug unique constraint enforces global namespace uniqueness.
+        const url = await this.urlRepository.createWithSlugs(
+          {
+            originalUrl: dto.originalUrl,
+            shortCode,
+            customAlias: alias,
+            expiresAt: dto.expiresAt,
+            strategy,
+            ...(userId ? { user: { connect: { id: userId } } } : {}),
+          },
+          slugEntries,
+        );
 
         const cachedUrl = this.urlMapper.toCached(url);
         await this.cache.set(shortCode, cachedUrl);
@@ -124,12 +136,9 @@ export class UrlCreateService {
             throw new ConflictException('Alias already exists');
           }
 
+          // Short code collided with the global slug namespace — retry with a new code
           this.logger.warn(
-            {
-              shortCode,
-              strategy,
-              attempt,
-            },
+            { shortCode, attempt },
             URL_CREATE_LOG_MESSAGES.COLLISION,
           );
           continue;

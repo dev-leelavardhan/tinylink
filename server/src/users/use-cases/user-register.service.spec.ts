@@ -2,8 +2,6 @@ import {
   ConflictException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { PinoLogger } from 'nestjs-pino';
@@ -25,16 +23,6 @@ describe('UserRegisterService', () => {
     create: jest.fn(),
     findByEmail: jest.fn(),
     findById: jest.fn(),
-    updateLastLogin: jest.fn(),
-    incrementTokenVersion: jest.fn(),
-  };
-
-  const jwtService = {
-    signAsync: jest.fn().mockResolvedValue('jwt-token'),
-  };
-
-  const configService = {
-    getOrThrow: jest.fn().mockReturnValue('secret-key'),
   };
 
   const otpService = {
@@ -50,15 +38,11 @@ describe('UserRegisterService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    jwtService.signAsync.mockResolvedValue('jwt-token');
-    configService.getOrThrow.mockReturnValue('secret-key');
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserRegisterService,
         { provide: UserRepository, useValue: repository },
-        { provide: JwtService, useValue: jwtService },
-        { provide: ConfigService, useValue: configService },
         { provide: UserOtpService, useValue: otpService },
         { provide: MailerService, useValue: mailerService },
         { provide: PinoLogger, useValue: logger },
@@ -73,9 +57,12 @@ describe('UserRegisterService', () => {
   });
 
   describe('register', () => {
-    const dto = { email: 'test@example.com', password: 'Password1!' };
+    const dto = {
+      email: 'test@example.com',
+      password: 'strongPassword123',
+    };
 
-    it('should register a new user and return tokens', async () => {
+    it('should create user and send verification email', async () => {
       const createdUser = {
         id: 'user-1',
         email: dto.email,
@@ -86,8 +73,9 @@ describe('UserRegisterService', () => {
       const result = await service.register(dto);
 
       expect(result).toEqual({
-        accessToken: 'jwt-token',
-        refreshToken: 'jwt-token',
+        message:
+          'Registration successful. Please check your email to verify your account.',
+        email: dto.email,
       });
       expect(repository.create).toHaveBeenCalledWith({
         email: dto.email,
@@ -105,7 +93,7 @@ describe('UserRegisterService', () => {
       });
     });
 
-    it('should still return tokens if OTP generation fails', async () => {
+    it('should still return success if OTP generation fails', async () => {
       const createdUser = {
         id: 'user-1',
         email: dto.email,
@@ -117,13 +105,14 @@ describe('UserRegisterService', () => {
       const result = await service.register(dto);
 
       expect(result).toEqual({
-        accessToken: 'jwt-token',
-        refreshToken: 'jwt-token',
+        message:
+          'Registration successful. Please check your email to verify your account.',
+        email: dto.email,
       });
       expect(logger.error).toHaveBeenCalled();
     });
 
-    it('should still return tokens if email send fails', async () => {
+    it('should still return success if email send fails', async () => {
       const createdUser = {
         id: 'user-1',
         email: dto.email,
@@ -135,8 +124,9 @@ describe('UserRegisterService', () => {
       const result = await service.register(dto);
 
       expect(result).toEqual({
-        accessToken: 'jwt-token',
-        refreshToken: 'jwt-token',
+        message:
+          'Registration successful. Please check your email to verify your account.',
+        email: dto.email,
       });
       expect(logger.error).toHaveBeenCalled();
     });
@@ -152,8 +142,8 @@ describe('UserRegisterService', () => {
       await expect(service.register(dto)).rejects.toThrow(ConflictException);
     });
 
-    it('should throw InternalServerErrorException for other errors', async () => {
-      repository.create.mockRejectedValue(new Error('Database error'));
+    it('should throw InternalServerErrorException for unexpected errors', async () => {
+      repository.create.mockRejectedValue(new Error('DB error'));
 
       await expect(service.register(dto)).rejects.toThrow(
         InternalServerErrorException,

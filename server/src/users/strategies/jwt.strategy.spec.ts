@@ -42,8 +42,14 @@ describe('JwtStrategy', () => {
         tokenVersion: 0,
         iss: 'tinylink',
         aud: 'tinylink-api',
+        jti: 'test-jti',
       };
-      const user = { id: 'user-1', tokenVersion: 0 };
+      const user = {
+        id: 'user-1',
+        tokenVersion: 0,
+        status: 'ACTIVE',
+        emailVerified: true,
+      };
       repository.findById.mockResolvedValue(user);
 
       const result = await strategy.validate(payload);
@@ -57,6 +63,7 @@ describe('JwtStrategy', () => {
         tokenVersion: 0,
         iss: 'tinylink',
         aud: 'tinylink-api',
+        jti: 'test-jti',
       };
       repository.findById.mockResolvedValue(null);
 
@@ -71,8 +78,56 @@ describe('JwtStrategy', () => {
         tokenVersion: 1,
         iss: 'tinylink',
         aud: 'tinylink-api',
+        jti: 'test-jti',
       };
-      const user = { id: 'user-1', tokenVersion: 0 };
+      const user = {
+        id: 'user-1',
+        tokenVersion: 0,
+        status: 'ACTIVE',
+        emailVerified: true,
+      };
+      repository.findById.mockResolvedValue(user);
+
+      await expect(strategy.validate(payload)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should throw UnauthorizedException if user status is not ACTIVE', async () => {
+      const payload = {
+        sub: 'user-1',
+        tokenVersion: 0,
+        iss: 'tinylink',
+        aud: 'tinylink-api',
+        jti: 'test-jti',
+      };
+      const user = {
+        id: 'user-1',
+        tokenVersion: 0,
+        status: 'PENDING_VERIFICATION',
+        emailVerified: false,
+      };
+      repository.findById.mockResolvedValue(user);
+
+      await expect(strategy.validate(payload)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should throw UnauthorizedException if email not verified', async () => {
+      const payload = {
+        sub: 'user-1',
+        tokenVersion: 0,
+        iss: 'tinylink',
+        aud: 'tinylink-api',
+        jti: 'test-jti',
+      };
+      const user = {
+        id: 'user-1',
+        tokenVersion: 0,
+        status: 'ACTIVE',
+        emailVerified: false,
+      };
       repository.findById.mockResolvedValue(user);
 
       await expect(strategy.validate(payload)).rejects.toThrow(

@@ -44,6 +44,7 @@ describe('UserLoginService', () => {
     findActiveByUserId: jest.fn(),
     findById: jest.fn(),
     rotateSession: jest.fn(),
+    updateRefreshTokenHash: jest.fn(),
     findRecentlyRevokedByUserId: jest.fn(),
     revokeAllForUser: jest.fn(),
   };
@@ -269,15 +270,13 @@ describe('UserLoginService', () => {
         tokenVersion: 0,
         iss: 'tinylink',
         aud: 'tinylink-api',
+        jti: 'test-jti',
+        sessionId: 'session-1',
       };
       jwtService.verify.mockReturnValue(payload);
 
       const user = { id: 'user-1', tokenVersion: 0 };
       repository.findById.mockResolvedValue(user);
-      repository.incrementTokenVersion.mockResolvedValue({
-        ...user,
-        tokenVersion: 1,
-      });
 
       sessionRepository.findSessionContextForRefresh.mockResolvedValue({
         status: 'active',
@@ -287,7 +286,11 @@ describe('UserLoginService', () => {
           expiresAt: new Date(Date.now() + 86400000),
         },
       });
-      sessionRepository.rotateSession.mockResolvedValue({ id: 'session-2' });
+      sessionRepository.rotateSession.mockResolvedValue({
+        session: { id: 'session-2' },
+        newTokenVersion: 1,
+      });
+      sessionRepository.updateRefreshTokenHash.mockResolvedValue(undefined);
 
       const result = await service.refresh(
         'refresh-token',
@@ -309,6 +312,7 @@ describe('UserLoginService', () => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           lastUsedAt: expect.any(Date),
         }),
+        'user-1',
       );
       expect(auditService.logRefreshTokenIssued).toHaveBeenCalledWith(
         'user-1',

@@ -122,7 +122,8 @@ describe('UserOtpService', () => {
       // Mock redis.get to return the stored value for the OTP key
       redis.get.mockImplementation((key: string) => {
         if (key === 'otp:ratelimit:user-1') return Promise.resolve(null);
-        if (key === 'otp:attempts:user-1') return Promise.resolve(null);
+        if (key === 'otp:attempts:otp:verify:user-1')
+          return Promise.resolve(null);
         if (key === 'otp:verify:user-1') return Promise.resolve(storedValue);
         return Promise.resolve(null);
       });
@@ -153,7 +154,8 @@ describe('UserOtpService', () => {
       // Redis fails for OTP lookup
       redis.get.mockImplementation((key: string) => {
         if (key === 'otp:ratelimit:user-1') return Promise.resolve(null);
-        if (key === 'otp:attempts:user-1') return Promise.resolve(null);
+        if (key === 'otp:attempts:otp:verify:user-1')
+          return Promise.resolve(null);
         if (key === 'otp:verify:user-1')
           return Promise.reject(new Error('Redis down'));
         return Promise.resolve(null);
@@ -176,7 +178,8 @@ describe('UserOtpService', () => {
 
       redis.get.mockImplementation((key: string) => {
         if (key === 'otp:ratelimit:user-1') return Promise.resolve(null);
-        if (key === 'otp:attempts:user-1') return Promise.resolve(null);
+        if (key === 'otp:attempts:otp:verify:user-1')
+          return Promise.resolve(null);
         if (key === 'otp:verify:user-1')
           return Promise.resolve(
             JSON.stringify({
@@ -196,7 +199,8 @@ describe('UserOtpService', () => {
     it('should return null if OTP not found', async () => {
       redis.get.mockImplementation((key: string) => {
         if (key === 'otp:ratelimit:user-1') return Promise.resolve(null);
-        if (key === 'otp:attempts:user-1') return Promise.resolve(null);
+        if (key === 'otp:attempts:otp:verify:user-1')
+          return Promise.resolve(null);
         return Promise.resolve(null);
       });
       repository.findValidOtp.mockResolvedValueOnce(null);
@@ -209,7 +213,8 @@ describe('UserOtpService', () => {
     it('should track failed attempts', async () => {
       redis.get.mockImplementation((key: string) => {
         if (key === 'otp:ratelimit:user-1') return Promise.resolve(null);
-        if (key === 'otp:attempts:user-1') return Promise.resolve(null);
+        if (key === 'otp:attempts:otp:verify:user-1')
+          return Promise.resolve(null);
         return Promise.resolve(null);
       });
       redisMultiChain.exec
@@ -229,7 +234,8 @@ describe('UserOtpService', () => {
     it('should block after max attempts', async () => {
       redis.get.mockImplementation((key: string) => {
         if (key === 'otp:ratelimit:user-1') return Promise.resolve(null);
-        if (key === 'otp:attempts:user-1') return Promise.resolve('5');
+        if (key === 'otp:attempts:otp:verify:user-1')
+          return Promise.resolve('5');
         return Promise.resolve(null);
       });
       redis.incr.mockResolvedValueOnce(1); // rate limit
@@ -268,7 +274,7 @@ describe('UserOtpService', () => {
 
       await service.resend('user-1', 'test@example.com');
 
-      expect(redis.del).toHaveBeenCalledWith('otp:attempts:user-1');
+      expect(redis.del).toHaveBeenCalledWith('otp:attempts:otp:verify:user-1');
     });
 
     it('should respect cooldown period', async () => {

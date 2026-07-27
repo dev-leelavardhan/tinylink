@@ -9,6 +9,7 @@ import QRCode from 'qrcode';
 
 import { QR_ERROR_MESSAGES, QR_LOG_MESSAGES } from '../constants/qr.constants';
 import { UrlRepository } from '../repositories/url.repository';
+import { UrlSlugRepository } from '../repositories/url-slug.repository';
 
 export interface QrResult {
   buffer: Buffer;
@@ -19,6 +20,7 @@ export interface QrResult {
 export class UrlQrService {
   constructor(
     private readonly urlRepository: UrlRepository,
+    private readonly urlSlugRepository: UrlSlugRepository,
     private readonly config: ConfigService,
     private readonly logger: PinoLogger,
   ) {
@@ -31,9 +33,10 @@ export class UrlQrService {
     size: number,
   ): Promise<QrResult> {
     try {
-      const url = await this.urlRepository.findByShortCodeOrAlias(shortCode);
+      const slug = await this.urlSlugRepository.findBySlug(shortCode);
+      const url = slug ? await this.urlRepository.findById(slug.urlId) : null;
 
-      if (!url) {
+      if (!url || url.deletedAt) {
         throw new NotFoundException(QR_ERROR_MESSAGES.URL_NOT_FOUND);
       }
 

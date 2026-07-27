@@ -36,28 +36,34 @@ describe('UrlRepository', () => {
     });
   });
 
-  describe('findByAlias', () => {
-    it('finds a URL by custom alias', async () => {
-      const url = { id: '1', customAlias: 'my-alias', shortCode: 'abc' };
-      prisma.url.findFirst.mockResolvedValue(url);
+  describe('createWithSlugs', () => {
+    it('creates a URL and its slugs in a transaction', async () => {
+      const urlData = {
+        originalUrl: 'https://example.com',
+        shortCode: 'abc123',
+        customAlias: null,
+        expiresAt: null,
+        strategy: 'random',
+      };
+      const slugs = [{ slug: 'abc123' }];
+      const expectedUrl = { id: '1', ...urlData };
 
-      const result = await repository.findByAlias('my-alias');
+      const mockTx = {
+        url: { create: jest.fn().mockResolvedValue(expectedUrl) },
+        urlSlug: { createMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      };
 
-      expect(result).toEqual(url);
-      expect(prisma.url.findFirst).toHaveBeenCalledWith({
-        where: {
-          OR: [{ customAlias: 'my-alias' }, { shortCode: 'my-alias' }],
-          deletedAt: null,
-        },
+      prisma.$transaction.mockImplementation((fn: (arg: unknown) => unknown) =>
+        fn(mockTx),
+      );
+
+      const result = await repository.createWithSlugs(urlData, slugs);
+
+      expect(result).toEqual(expectedUrl);
+      expect(mockTx.url.create).toHaveBeenCalledWith({ data: urlData });
+      expect(mockTx.urlSlug.createMany).toHaveBeenCalledWith({
+        data: [{ slug: 'abc123', urlId: '1' }],
       });
-    });
-
-    it('returns null when no URL matches', async () => {
-      prisma.url.findFirst.mockResolvedValue(null);
-
-      const result = await repository.findByAlias('nonexistent');
-
-      expect(result).toBeNull();
     });
   });
 
@@ -80,23 +86,6 @@ describe('UrlRepository', () => {
         where: {
           originalUrl: 'https://example.com',
           strategy: 'random',
-          deletedAt: null,
-        },
-      });
-    });
-  });
-
-  describe('findByShortCodeOrAlias', () => {
-    it('finds a URL by short code', async () => {
-      const url = { id: '1', shortCode: 'abc', customAlias: null };
-      prisma.url.findFirst.mockResolvedValue(url);
-
-      const result = await repository.findByShortCodeOrAlias('abc');
-
-      expect(result).toEqual(url);
-      expect(prisma.url.findFirst).toHaveBeenCalledWith({
-        where: {
-          OR: [{ shortCode: 'abc' }, { customAlias: 'abc' }],
           deletedAt: null,
         },
       });

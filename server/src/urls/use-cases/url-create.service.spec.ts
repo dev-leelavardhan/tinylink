@@ -8,6 +8,7 @@ import { ShortCodeGeneratorService } from '../../common/short-code/short-code-ge
 import { UrlCacheService } from '../service/urls-cache.service';
 import { AliasValidatorService } from '../validators/alias-validator.service';
 import { UrlRepository } from '../repositories/url.repository';
+import { UrlSlugRepository } from '../repositories/url-slug.repository';
 import { UrlMapper } from '../mappers/urls.mapper';
 import { RedisService } from '../../redis/service/redis.service';
 import { createLoggerMock } from '../../testing/mocks';
@@ -36,9 +37,13 @@ describe('UrlCreateService', () => {
 
   const repository = {
     create: jest.fn(),
-    findByAlias: jest.fn(),
+    createWithSlugs: jest.fn(),
     findByOriginalUrlAndStrategy: jest.fn(),
-    findByShortCodeOrAlias: jest.fn(),
+  };
+
+  const slugRepository = {
+    findBySlug: jest.fn(),
+    existsBySlug: jest.fn(),
   };
 
   const mapper = {
@@ -81,6 +86,7 @@ describe('UrlCreateService', () => {
         { provide: AliasValidatorService, useValue: aliasValidator },
         { provide: UrlCacheService, useValue: cache },
         { provide: UrlRepository, useValue: repository },
+        { provide: UrlSlugRepository, useValue: slugRepository },
         { provide: UrlMapper, useValue: mapper },
         { provide: RedisService, useValue: redis },
         { provide: PinoLogger, useValue: logger },
@@ -104,7 +110,7 @@ describe('UrlCreateService', () => {
       const result = await service.create(dto);
 
       expect(result).toEqual(mapper.toResponse(existing));
-      expect(repository.create).not.toHaveBeenCalled();
+      expect(repository.createWithSlugs).not.toHaveBeenCalled();
     });
 
     it('creates a new URL with generated short code', async () => {
@@ -118,17 +124,20 @@ describe('UrlCreateService', () => {
         expiresAt: null,
         customAlias: null,
       };
-      repository.create.mockResolvedValue(created);
+      repository.createWithSlugs.mockResolvedValue(created);
 
       const result = await service.create(dto);
 
-      expect(repository.create).toHaveBeenCalledWith({
-        originalUrl: 'https://example.com',
-        shortCode: 'gen123',
-        customAlias: undefined,
-        expiresAt: undefined,
-        strategy: 'random',
-      });
+      expect(repository.createWithSlugs).toHaveBeenCalledWith(
+        {
+          originalUrl: 'https://example.com',
+          shortCode: 'gen123',
+          customAlias: undefined,
+          expiresAt: undefined,
+          strategy: 'random',
+        },
+        [{ slug: 'gen123' }],
+      );
       expect(cache.set).toHaveBeenCalledWith('gen123', expect.any(Object));
       expect(result).toEqual(mapper.toResponse(created));
     });
@@ -148,16 +157,17 @@ describe('UrlCreateService', () => {
         expiresAt: null,
         customAlias: 'validated-alias',
       };
-      repository.create.mockResolvedValue(created);
+      repository.createWithSlugs.mockResolvedValue(created);
 
       await service.create(aliasDto);
 
       expect(aliasValidator.validate).toHaveBeenCalledWith('My-Alias');
-      expect(repository.create).toHaveBeenCalledWith(
+      expect(repository.createWithSlugs).toHaveBeenCalledWith(
         expect.objectContaining({
           shortCode: 'validated-alias',
           customAlias: 'validated-alias',
         }),
+        [{ slug: 'validated-alias' }],
       );
     });
 
@@ -182,7 +192,7 @@ describe('UrlCreateService', () => {
         expiresAt: null,
         customAlias: null,
       };
-      repository.create
+      repository.createWithSlugs
         .mockRejectedValueOnce(collisionError)
         .mockResolvedValueOnce(created);
 
@@ -207,7 +217,7 @@ describe('UrlCreateService', () => {
         meta: { target: ['originalUrl', 'strategy'] },
       });
 
-      repository.create.mockRejectedValueOnce(collisionError);
+      repository.createWithSlugs.mockRejectedValueOnce(collisionError);
 
       const result = await service.create(dto);
 
@@ -244,7 +254,7 @@ describe('UrlCreateService', () => {
         expiresAt: null,
         customAlias: null,
       };
-      repository.create
+      repository.createWithSlugs
         .mockRejectedValueOnce(collisionError)
         .mockResolvedValueOnce(created);
 
@@ -255,7 +265,7 @@ describe('UrlCreateService', () => {
 
     it('throws InternalServerErrorException for non-P2002 errors', async () => {
       repository.findByOriginalUrlAndStrategy.mockResolvedValue(null);
-      repository.create.mockRejectedValue(new Error('db crash'));
+      repository.createWithSlugs.mockRejectedValue(new Error('db crash'));
 
       await expect(service.create(dto)).rejects.toBeInstanceOf(
         InternalServerErrorException,
@@ -271,7 +281,7 @@ describe('UrlCreateService', () => {
         meta: { target: ['shortCode'] },
       });
 
-      repository.create.mockRejectedValue(collisionError);
+      repository.createWithSlugs.mockRejectedValue(collisionError);
       shortCodeGenerator.generate.mockResolvedValue('colliding');
 
       await expect(service.create(dto)).rejects.toThrow(

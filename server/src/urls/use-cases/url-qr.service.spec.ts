@@ -6,6 +6,7 @@ import QRCode from 'qrcode';
 
 import { UrlQrService } from './url-qr.service';
 import { UrlRepository } from '../repositories/url.repository';
+import { UrlSlugRepository } from '../repositories/url-slug.repository';
 import { QR_ERROR_MESSAGES } from '../constants/qr.constants';
 
 jest.mock('qrcode', () => ({
@@ -16,7 +17,10 @@ jest.mock('qrcode', () => ({
 describe('UrlQrService', () => {
   let service: UrlQrService;
   let urlRepository: {
-    findByShortCodeOrAlias: jest.Mock;
+    findById: jest.Mock;
+  };
+  let slugRepository: {
+    findBySlug: jest.Mock;
   };
   let config: {
     getOrThrow: jest.Mock;
@@ -24,7 +28,11 @@ describe('UrlQrService', () => {
 
   beforeEach(async () => {
     urlRepository = {
-      findByShortCodeOrAlias: jest.fn(),
+      findById: jest.fn(),
+    };
+
+    slugRepository = {
+      findBySlug: jest.fn(),
     };
 
     config = {
@@ -35,6 +43,7 @@ describe('UrlQrService', () => {
       providers: [
         UrlQrService,
         { provide: UrlRepository, useValue: urlRepository },
+        { provide: UrlSlugRepository, useValue: slugRepository },
         { provide: ConfigService, useValue: config },
         {
           provide: PinoLogger,
@@ -60,17 +69,17 @@ describe('UrlQrService', () => {
 
   describe('generate', () => {
     it('generates PNG QR code for existing URL', async () => {
-      urlRepository.findByShortCodeOrAlias.mockResolvedValue({
+      slugRepository.findBySlug.mockResolvedValue({ urlId: 'url-1' });
+      urlRepository.findById.mockResolvedValue({
         id: 'url-1',
         shortCode: 'abc1234',
         originalUrl: 'https://example.com',
+        deletedAt: null,
       });
 
       const result = await service.generate('abc1234', 'png', 300);
 
-      expect(urlRepository.findByShortCodeOrAlias).toHaveBeenCalledWith(
-        'abc1234',
-      );
+      expect(slugRepository.findBySlug).toHaveBeenCalledWith('abc1234');
       expect(QRCode.toBuffer).toHaveBeenCalledWith('https://short.ly/abc1234', {
         type: 'png',
         width: 300,
@@ -80,10 +89,12 @@ describe('UrlQrService', () => {
     });
 
     it('generates SVG QR code for existing URL', async () => {
-      urlRepository.findByShortCodeOrAlias.mockResolvedValue({
+      slugRepository.findBySlug.mockResolvedValue({ urlId: 'url-1' });
+      urlRepository.findById.mockResolvedValue({
         id: 'url-1',
         shortCode: 'abc1234',
         originalUrl: 'https://example.com',
+        deletedAt: null,
       });
 
       const result = await service.generate('abc1234', 'svg', 400);
@@ -96,7 +107,7 @@ describe('UrlQrService', () => {
     });
 
     it('throws NotFoundException for non-existent URL', async () => {
-      urlRepository.findByShortCodeOrAlias.mockResolvedValue(null);
+      slugRepository.findBySlug.mockResolvedValue(null);
 
       await expect(service.generate('nonexistent', 'png', 300)).rejects.toThrow(
         NotFoundException,
@@ -104,7 +115,7 @@ describe('UrlQrService', () => {
     });
 
     it('throws NotFoundException with correct error message', async () => {
-      urlRepository.findByShortCodeOrAlias.mockResolvedValue(null);
+      slugRepository.findBySlug.mockResolvedValue(null);
 
       try {
         await service.generate('nonexistent', 'png', 300);
@@ -118,11 +129,13 @@ describe('UrlQrService', () => {
     });
 
     it('uses custom alias for QR content when alias exists', async () => {
-      urlRepository.findByShortCodeOrAlias.mockResolvedValue({
+      slugRepository.findBySlug.mockResolvedValue({ urlId: 'url-1' });
+      urlRepository.findById.mockResolvedValue({
         id: 'url-1',
         shortCode: 'abc1234',
         customAlias: 'myalias',
         originalUrl: 'https://example.com',
+        deletedAt: null,
       });
 
       await service.generate('myalias', 'png', 300);

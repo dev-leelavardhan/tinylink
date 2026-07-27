@@ -206,12 +206,18 @@ describe('SessionRepository', () => {
   });
 
   describe('rotateSession', () => {
-    it('should revoke old session and create new session atomically', async () => {
-      const oldSession = { id: 'session-1' };
+    it('should revoke old session, increment tokenVersion, and create new session atomically', async () => {
       const newSession = { id: 'session-2', refreshTokenHash: 'new-hash' };
+
+      const mockTx = {
+        $executeRaw: jest.fn().mockResolvedValue(1),
+        user: { update: jest.fn().mockResolvedValue({ tokenVersion: 2 }) },
+        session: { create: jest.fn().mockResolvedValue(newSession) },
+      };
+
       prisma.$transaction = jest
         .fn()
-        .mockResolvedValue([oldSession, newSession]);
+        .mockImplementation((fn: (arg: unknown) => unknown) => fn(mockTx));
 
       const newSessionData = {
         user: { connect: { id: 'user-1' } },
@@ -222,10 +228,42 @@ describe('SessionRepository', () => {
       const result = await repository.rotateSession(
         'session-1',
         newSessionData,
+        'user-1',
       );
 
       expect(prisma.$transaction).toHaveBeenCalled();
-      expect(result).toEqual(newSession);
+      expect(mockTx.$executeRaw).toHaveBeenCalled();
+      expect(mockTx.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { tokenVersion: { increment: 1 } },
+        select: { tokenVersion: true },
+      });
+      expect(mockTx.session.create).toHaveBeenCalledWith({
+        data: newSessionData,
+      });
+      expect(result).toEqual({ session: newSession, newTokenVersion: 2 });
+    });
+
+    it('should throw when session already revoked (concurrent refresh)', async () => {
+      const mockTx = {
+        $executeRaw: jest.fn().mockResolvedValue(0),
+        user: { update: jest.fn() },
+        session: { create: jest.fn() },
+      };
+
+      prisma.$transaction = jest
+        .fn()
+        .mockImplementation((fn: (arg: unknown) => unknown) => fn(mockTx));
+
+      const newSessionData = {
+        user: { connect: { id: 'user-1' } },
+        refreshTokenHash: 'new-hash',
+        expiresAt: new Date(),
+      };
+
+      await expect(
+        repository.rotateSession('session-1', newSessionData, 'user-1'),
+      ).rejects.toThrow('Session already revoked');
     });
   });
 });

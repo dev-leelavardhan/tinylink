@@ -8,5 +8,6 @@ export interface JwtPayload {
   tokenVersion: number;
   iss: string;
   aud: string;
+  jti: string;
   sessionId?: string;
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 import { CacheService } from '../../cache/service/cache.service';
-import { CachedUrl } from '../../cache/types';
+import { CachedUrl, CacheResult } from '../../cache/types';
 
 @Injectable()
 export class UrlCacheService {
@@ -13,9 +13,9 @@ export class UrlCacheService {
   }
 
   /**
-   * Cache-aside GET: returns CachedUrl on hit, null on miss or negative cache hit.
+   * Cache-aside GET: returns hit with data, negative (known not-found), or miss.
    */
-  async get(shortCode: string): Promise<CachedUrl | null> {
+  async get(shortCode: string): Promise<CacheResult> {
     return this.cacheService.get(shortCode);
   }
 

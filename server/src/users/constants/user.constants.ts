@@ -38,7 +38,7 @@ export const USER_CONSTANTS = {
   // Session
   SESSION_EXPIRY_DAYS: 7,
   SESSION_COOKIE_NAME: 'refresh_token',
-  SESSION_COOKIE_PATH: '/auth/refresh',
+  SESSION_COOKIE_PATH: '/auth',
   SESSION_COOKIE_MAX_AGE_MS: 7 * 24 * 60 * 60 * 1000,
   SLIDING_SESSION_ENABLED: false,
 

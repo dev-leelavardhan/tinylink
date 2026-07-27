@@ -43,7 +43,7 @@ describe('USER_CONSTANTS', () => {
   it('should have session constants', () => {
     expect(USER_CONSTANTS.SESSION_EXPIRY_DAYS).toBe(7);
     expect(USER_CONSTANTS.SESSION_COOKIE_NAME).toBe('refresh_token');
-    expect(USER_CONSTANTS.SESSION_COOKIE_PATH).toBe('/auth/refresh');
+    expect(USER_CONSTANTS.SESSION_COOKIE_PATH).toBe('/auth');
     expect(USER_CONSTANTS.SLIDING_SESSION_ENABLED).toBe(false);
   });
 

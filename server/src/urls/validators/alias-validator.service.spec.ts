@@ -2,20 +2,20 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AliasValidatorService } from './alias-validator.service';
-import { UrlRepository } from '../repositories/url.repository';
+import { UrlSlugRepository } from '../repositories/url-slug.repository';
 
 describe('AliasValidatorService (unit)', () => {
   let service: AliasValidatorService;
-  let repository: { findByAlias: jest.Mock };
+  let slugRepository: { existsBySlug: jest.Mock };
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    repository = { findByAlias: jest.fn() };
+    slugRepository = { existsBySlug: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AliasValidatorService,
-        { provide: UrlRepository, useValue: repository },
+        { provide: UrlSlugRepository, useValue: slugRepository },
       ],
     }).compile();
 
@@ -47,7 +47,7 @@ describe('AliasValidatorService (unit)', () => {
   });
 
   it('rejects aliases that already exist', async () => {
-    repository.findByAlias.mockResolvedValue({ id: 'existing' });
+    slugRepository.existsBySlug.mockResolvedValue(true);
 
     await expect(service.validate('taken-alias')).rejects.toBeInstanceOf(
       ConflictException,
@@ -55,7 +55,7 @@ describe('AliasValidatorService (unit)', () => {
   });
 
   it('accepts valid unused aliases', async () => {
-    repository.findByAlias.mockResolvedValue(null);
+    slugRepository.existsBySlug.mockResolvedValue(false);
 
     await expect(service.validate('valid-alias')).resolves.toBe('valid-alias');
   });

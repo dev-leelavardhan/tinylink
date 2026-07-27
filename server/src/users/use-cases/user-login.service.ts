@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { randomUUID } from 'crypto';
 import * as argon2 from 'argon2';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -133,22 +134,28 @@ export class UserLoginService {
 
     const expiresAt = daysFromNow(USER_CONSTANTS.SESSION_EXPIRY_DAYS);
 
-    const { accessToken, refreshToken } = await this.generateTokens(
-      user.id,
-      updatedUser.tokenVersion,
-    );
-
-    const refreshTokenHash = hashRefreshToken(refreshToken);
-
+    // Create session first to get the sessionId for JWT binding
     const session = await this.sessionRepository.create({
       user: { connect: { id: user.id } },
-      refreshTokenHash,
+      refreshTokenHash: 'pending',
       browser,
       operatingSystem: os,
       ipAddress: ip,
       userAgent,
       expiresAt,
     });
+
+    const { accessToken, refreshToken } = await this.generateTokens(
+      user.id,
+      updatedUser.tokenVersion,
+      session.id,
+    );
+
+    const refreshTokenHash = hashRefreshToken(refreshToken);
+    await this.sessionRepository.updateRefreshTokenHash(
+      session.id,
+      refreshTokenHash,
+    );
 
     await this.auditService.log({
       userId: user.id,
@@ -254,6 +261,13 @@ export class UserLoginService {
 
       const session = context.session;
 
+      // Verify sessionId binding: token must be bound to the session it was issued for
+      if (payload.sessionId && payload.sessionId !== session.id) {
+        throw new UnauthorizedException(
+          USER_ERROR_MESSAGES.INVALID_REFRESH_TOKEN,
+        );
+      }
+
       const user = await this.userRepository.findById(payload.sub);
       if (!user) {
         throw new UnauthorizedException(USER_ERROR_MESSAGES.USER_NOT_FOUND);
@@ -263,10 +277,6 @@ export class UserLoginService {
         throw new UnauthorizedException(USER_ERROR_MESSAGES.TOKEN_REVOKED);
       }
 
-      const updatedUser = await this.userRepository.incrementTokenVersion(
-        user.id,
-      );
-
       const { browser, os } = userAgent
         ? parseUserAgent(userAgent)
         : { browser: null, os: null };
@@ -275,25 +285,34 @@ export class UserLoginService {
         ? daysFromNow(USER_CONSTANTS.SESSION_EXPIRY_DAYS)
         : session.expiresAt;
 
-      const newTokens = await this.generateTokens(
-        user.id,
-        updatedUser.tokenVersion,
-      );
+      // Generate a temporary refresh token hash for the new session.
+      // The actual token is generated after the transaction succeeds.
+      const tempRefreshTokenHash = hashRefreshToken(randomUUID());
 
+      const { session: newSession, newTokenVersion } =
+        await this.sessionRepository.rotateSession(
+          session.id,
+          {
+            user: { connect: { id: user.id } },
+            refreshTokenHash: tempRefreshTokenHash,
+            browser,
+            operatingSystem: os,
+            ipAddress: ip,
+            userAgent,
+            lastUsedAt: new Date(),
+            expiresAt,
+          },
+          user.id,
+        );
+
+      // Generate tokens with the atomically incremented tokenVersion
+      const newTokens = await this.generateTokens(user.id, newTokenVersion);
+
+      // Update the session with the real refresh token hash
       const newRefreshTokenHash = hashRefreshToken(newTokens.refreshToken);
-
-      const newSession = await this.sessionRepository.rotateSession(
-        session.id,
-        {
-          user: { connect: { id: user.id } },
-          refreshTokenHash: newRefreshTokenHash,
-          browser,
-          operatingSystem: os,
-          ipAddress: ip,
-          userAgent,
-          lastUsedAt: new Date(),
-          expiresAt,
-        },
+      await this.sessionRepository.updateRefreshTokenHash(
+        newSession.id,
+        newRefreshTokenHash,
       );
 
       await this.auditService.logRefreshTokenIssued(user.id, {
@@ -422,12 +441,15 @@ export class UserLoginService {
   private async generateTokens(
     userId: string,
     tokenVersion: number,
+    sessionId?: string,
   ): Promise<AuthTokens> {
     const payload: JwtPayload = {
       sub: userId,
       tokenVersion,
       iss: USER_CONSTANTS.JWT_ISSUER,
       aud: USER_CONSTANTS.JWT_AUDIENCE,
+      jti: randomUUID(),
+      ...(sessionId ? { sessionId } : {}),
     };
 
     const [accessToken, refreshToken] = await Promise.all([

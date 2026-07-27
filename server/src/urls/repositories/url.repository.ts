@@ -18,12 +18,21 @@ export class UrlRepository {
     });
   }
 
-  async findByAlias(alias: string) {
-    return this.prisma.url.findFirst({
-      where: {
-        OR: [{ customAlias: alias }, { shortCode: alias }],
-        deletedAt: null,
-      },
+  async createWithSlugs(
+    urlData: Prisma.UrlCreateInput,
+    slugs: Array<{ slug: string }>,
+  ): Promise<Url> {
+    return this.prisma.$transaction(async (tx) => {
+      const url = await tx.url.create({ data: urlData });
+
+      await tx.urlSlug.createMany({
+        data: slugs.map((s) => ({
+          slug: s.slug,
+          urlId: url.id,
+        })),
+      });
+
+      return url;
     });
   }
 
@@ -35,15 +44,6 @@ export class UrlRepository {
       where: {
         originalUrl,
         strategy,
-        deletedAt: null,
-      },
-    });
-  }
-
-  findByShortCodeOrAlias(shortCode: string): Promise<Url | null> {
-    return this.prisma.url.findFirst({
-      where: {
-        OR: [{ shortCode }, { customAlias: shortCode }],
         deletedAt: null,
       },
     });

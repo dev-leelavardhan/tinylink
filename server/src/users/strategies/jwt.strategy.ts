@@ -33,6 +33,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (user.tokenVersion !== payload.tokenVersion) {
       throw new UnauthorizedException(USER_ERROR_MESSAGES.TOKEN_REVOKED);
     }
+    if (user.status !== 'ACTIVE') {
+      throw new UnauthorizedException(USER_ERROR_MESSAGES.ACCOUNT_NOT_ACTIVE);
+    }
+    if (!user.emailVerified) {
+      throw new UnauthorizedException(
+        USER_ERROR_MESSAGES.ACCOUNT_PENDING_VERIFICATION,
+      );
+    }
     return { userId: payload.sub };
   }
 }

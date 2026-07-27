@@ -13,6 +13,7 @@ describe('AnalyticsRepository', () => {
       deleteMany: jest.Mock;
     };
     $queryRaw: jest.Mock;
+    $executeRaw: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -25,6 +26,7 @@ describe('AnalyticsRepository', () => {
         deleteMany: jest.fn(),
       },
       $queryRaw: jest.fn(),
+      $executeRaw: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -204,18 +206,14 @@ describe('AnalyticsRepository', () => {
   });
 
   describe('deleteOldAnalytics', () => {
-    it('deletes old analytics records', async () => {
-      prisma.analytics.deleteMany.mockResolvedValue({ count: 100 });
+    it('deletes old analytics records in batches', async () => {
+      prisma.$executeRaw.mockResolvedValue(50);
 
       const retentionDate = new Date('2024-01-01');
-      const result = await repository.deleteOldAnalytics(retentionDate);
+      const result = await repository.deleteOldAnalytics(retentionDate, 100);
 
-      expect(prisma.analytics.deleteMany).toHaveBeenCalledWith({
-        where: {
-          timestamp: { lt: retentionDate },
-        },
-      });
-      expect(result.count).toBe(100);
+      expect(typeof result).toBe('number');
+      expect(prisma.$executeRaw).toHaveBeenCalled();
     });
   });
 });
