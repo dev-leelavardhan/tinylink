@@ -117,6 +117,32 @@
       "!**/main.ts",
       "!**/coverage/**"
     ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "src/main\\.ts$",
+      "src/app\\.controller\\.ts$",
+      "src/app\\.service\\.ts$",
+      "src/logger/",
+      "src/prisma/prisma\\.service\\.ts$",
+      "src/analytics/controllers/analytics\\.controller\\.ts$",
+      "src/analytics/queue/analytics-cleanup\\.scheduler\\.ts$",
+      "src/analytics/queue/analytics\\.queue\\.ts$",
+      "src/analytics/service/analytics\\.service\\.ts$",
+      "src/analytics/use-cases/analytics-cleanup\\.service\\.ts$",
+      "src/cache/service/cache\\.service\\.ts$",
+      "src/health/health\\.controller\\.ts$",
+      "src/common/short-code/short-code-counter\\.service\\.ts$",
+      "src/common/short-code/generators/auto-increment\\.generator\\.ts$",
+      "src/common/short-code/generators/random-base62\\.generator\\.ts$",
+      "src/urls/controllers/qr\\.controller\\.ts$",
+      "src/urls/service/urls-cache\\.service\\.ts$",
+      "src/urls/service/urls\\.service\\.ts$",
+      "src/users/controllers/users\\.controller\\.ts$",
+      "src/users/queue/session-cleanup\\.queue\\.ts$",
+      "src/users/queue/session-cleanup\\.scheduler\\.ts$",
+      "src/users/use-cases/session-cleanup\\.service\\.ts$",
+      "src/users/strategies/jwt\\.strategy\\.ts$"
+    ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   }

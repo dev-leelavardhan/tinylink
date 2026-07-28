@@ -113,4 +113,37 @@ describe('CsrfProtectionMiddleware', () => {
     expect(mockNext).toHaveBeenCalled();
     expect(mockResponse.status).not.toHaveBeenCalled();
   });
+
+  it('should handle array origin header', () => {
+    process.env.BASE_URL = 'https://example.com';
+    process.env.NODE_ENV = 'production';
+    mockRequest = {
+      headers: { origin: ['https://example.com'] as unknown as string },
+    };
+
+    CsrfProtectionMiddleware(
+      mockRequest as Request,
+      mockResponse as unknown as Response,
+      mockNext,
+    );
+
+    expect(mockNext).toHaveBeenCalled();
+  });
+
+  it('should reject request with invalid origin URL in production', () => {
+    process.env.BASE_URL = 'https://example.com';
+    process.env.NODE_ENV = 'production';
+    mockRequest = {
+      headers: { origin: 'not-a-valid-url' },
+    };
+
+    CsrfProtectionMiddleware(
+      mockRequest as Request,
+      mockResponse as unknown as Response,
+      mockNext,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(403);
+    expect(mockNext).not.toHaveBeenCalled();
+  });
 });

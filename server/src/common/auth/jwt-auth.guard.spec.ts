@@ -1,4 +1,16 @@
 import { JwtAuthGuard, JwtAuthOptionalGuard } from './jwt-auth.guard';
+import type { ExecutionContext } from '@nestjs/common';
+
+function createMockContext(): ExecutionContext {
+  return {
+    switchToHttp: () => ({
+      getRequest: () => ({}),
+      getResponse: () => ({}),
+    }),
+    getHandler: () => jest.fn(),
+    getClass: () => jest.fn(),
+  } as unknown as ExecutionContext;
+}
 
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;
@@ -9,6 +21,10 @@ describe('JwtAuthGuard', () => {
 
   it('should be defined', () => {
     expect(guard).toBeDefined();
+  });
+
+  it('should have canActivate method', () => {
+    expect(typeof guard.canActivate).toBe('function');
   });
 });
 
@@ -21,6 +37,10 @@ describe('JwtAuthOptionalGuard', () => {
 
   it('should be defined', () => {
     expect(guard).toBeDefined();
+  });
+
+  it('should have canActivate method', () => {
+    expect(typeof guard.canActivate).toBe('function');
   });
 
   describe('handleRequest', () => {

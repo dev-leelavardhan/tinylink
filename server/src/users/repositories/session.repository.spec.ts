@@ -205,6 +205,114 @@ describe('SessionRepository', () => {
     });
   });
 
+  describe('findById', () => {
+    it('should find session by id', async () => {
+      const session = { id: 'session-1' };
+      prisma.session.findUnique.mockResolvedValue(session);
+
+      const result = await repository.findById('session-1');
+
+      expect(prisma.session.findUnique).toHaveBeenCalledWith({
+        where: { id: 'session-1' },
+      });
+      expect(result).toEqual(session);
+    });
+
+    it('should return null when not found', async () => {
+      prisma.session.findUnique.mockResolvedValue(null);
+
+      const result = await repository.findById('nonexistent');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('updateLastUsed', () => {
+    it('should update lastUsedAt', async () => {
+      prisma.session.update.mockResolvedValue({ id: 'session-1' });
+
+      await repository.updateLastUsed('session-1');
+
+      expect(prisma.session.update).toHaveBeenCalledWith({
+        where: { id: 'session-1' },
+        data: { lastUsedAt: expect.any(Date) },
+      });
+    });
+  });
+
+  describe('deleteExpired', () => {
+    it('should delete expired sessions', async () => {
+      prisma.session.deleteMany.mockResolvedValue({ count: 5 });
+
+      const result = await repository.deleteExpired();
+
+      expect(prisma.session.deleteMany).toHaveBeenCalledWith({
+        where: { expiresAt: { lt: expect.any(Date) } },
+      });
+      expect(result).toEqual({ count: 5 });
+    });
+  });
+
+  describe('findRecentlyRevokedByUserId', () => {
+    it('should find recently revoked sessions', async () => {
+      const sessions = [{ id: 'session-1', revokedAt: new Date() }];
+      prisma.session.findMany.mockResolvedValue(sessions);
+      const since = new Date();
+
+      const result = await repository.findRecentlyRevokedByUserId('user-1', since);
+
+      expect(prisma.session.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', revokedAt: { gte: since } },
+      });
+      expect(result).toEqual(sessions);
+    });
+  });
+
+  describe('revokeAllExcept', () => {
+    it('should revoke all sessions except specified one', async () => {
+      prisma.session.updateMany.mockResolvedValue({ count: 2 });
+
+      const result = await repository.revokeAllExcept('user-1', 'session-1');
+
+      expect(prisma.session.updateMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          revokedAt: null,
+          id: { not: 'session-1' },
+        },
+        data: { revokedAt: expect.any(Date) },
+      });
+      expect(result).toEqual({ count: 2 });
+    });
+  });
+
+  describe('updateRefreshTokenHash', () => {
+    it('should update refresh token hash', async () => {
+      prisma.session.update.mockResolvedValue({ id: 'session-1' });
+
+      await repository.updateRefreshTokenHash('session-1', 'new-hash');
+
+      expect(prisma.session.update).toHaveBeenCalledWith({
+        where: { id: 'session-1' },
+        data: { refreshTokenHash: 'new-hash' },
+      });
+    });
+  });
+
+  describe('deleteRevokedOlderThan', () => {
+    it('should delete revoked sessions older than date', async () => {
+      prisma.session.deleteMany.mockResolvedValue({ count: 3 });
+      const date = new Date();
+
+      const result = await repository.deleteRevokedOlderThan(date);
+
+      expect(prisma.session.deleteMany).toHaveBeenCalledWith({
+        where: { revokedAt: { not: null, lt: date } },
+      });
+      expect(result).toEqual({ count: 3 });
+    });
+  });
+
   describe('rotateSession', () => {
     it('should revoke old session, increment tokenVersion, and create new session atomically', async () => {
       const newSession = { id: 'session-2', refreshTokenHash: 'new-hash' };

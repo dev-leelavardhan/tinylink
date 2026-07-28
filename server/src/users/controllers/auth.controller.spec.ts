@@ -44,10 +44,14 @@ describe('AuthController', () => {
     login: jest.Mock;
     refresh: jest.Mock;
     logout: jest.Mock;
+    logoutAll: jest.Mock;
     getActiveSessions: jest.Mock;
     revokeSession: jest.Mock;
+    globalLogout: jest.Mock;
     verifyEmail: jest.Mock;
     resendVerification: jest.Mock;
+    forgotPassword: jest.Mock;
+    resetPassword: jest.Mock;
   };
   let sessionMapper: {
     toSessionResponse: jest.Mock;
@@ -59,10 +63,14 @@ describe('AuthController', () => {
       login: jest.fn(),
       refresh: jest.fn(),
       logout: jest.fn(),
+      logoutAll: jest.fn(),
       getActiveSessions: jest.fn(),
       revokeSession: jest.fn(),
+      globalLogout: jest.fn(),
       verifyEmail: jest.fn(),
       resendVerification: jest.fn(),
+      forgotPassword: jest.fn(),
+      resetPassword: jest.fn(),
     };
     sessionMapper = {
       toSessionResponse: jest.fn(),
@@ -87,7 +95,10 @@ describe('AuthController', () => {
   describe('register', () => {
     it('should register a new user', async () => {
       const dto = { email: 'test@example.com', password: 'Password1!' };
-      const expected = { accessToken: 'token', refreshToken: 'refresh' };
+      const expected = {
+        message: 'Registration successful',
+        email: 'test@example.com',
+      };
       usersService.register.mockResolvedValue(expected);
 
       const result = await controller.register(dto);
@@ -152,6 +163,16 @@ describe('AuthController', () => {
         tokenType: 'Bearer',
       });
     });
+
+    it('should throw when no refresh token cookie', async () => {
+      const req = createMockRequest({
+        cookies: {},
+        headers: { 'user-agent': 'Mozilla/5.0' },
+      });
+      const res = createMockResponse();
+
+      await expect(controller.refresh(req, res)).rejects.toThrow();
+    });
   });
 
   describe('verifyEmail', () => {
@@ -186,6 +207,183 @@ describe('AuthController', () => {
       expect(usersService.resendVerification).toHaveBeenCalledWith(
         'test@example.com',
       );
+    });
+  });
+
+  describe('logout', () => {
+    it('should logout current session', async () => {
+      usersService.logout.mockResolvedValue(undefined);
+      usersService.getActiveSessions.mockResolvedValue([
+        { id: 'session-1', refreshTokenHash: 'hashed-token' },
+      ]);
+
+      const req = createMockRequest({
+        cookies: { refresh_token: 'refresh-token' },
+        headers: { 'user-agent': 'Mozilla/5.0' },
+      });
+      const res = createMockResponse();
+
+      const result = await controller.logout(
+        { userId: 'user-1' },
+        req,
+        res,
+      );
+
+      expect(result).toEqual({ message: 'Logged out successfully.' });
+    });
+
+    it('should handle missing refresh token cookie', async () => {
+      const req = createMockRequest({
+        cookies: {},
+        headers: { 'user-agent': 'Mozilla/5.0' },
+      });
+      const res = createMockResponse();
+
+      const result = await controller.logout(
+        { userId: 'user-1' },
+        req,
+        res,
+      );
+
+      expect(result).toEqual({ message: 'Logged out successfully.' });
+      expect(usersService.logout).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('logoutAll', () => {
+    it('should logout from all devices', async () => {
+      usersService.logoutAll.mockResolvedValue(undefined);
+
+      const req = createMockRequest({
+        headers: { 'user-agent': 'Mozilla/5.0' },
+      });
+      const res = createMockResponse();
+
+      const result = await controller.logoutAll(
+        { userId: 'user-1' },
+        req,
+        res,
+      );
+
+      expect(result).toEqual({
+        message: 'Logged out from all devices successfully.',
+      });
+      expect(usersService.logoutAll).toHaveBeenCalledWith(
+        'user-1',
+        '127.0.0.1',
+        'Mozilla/5.0',
+      );
+    });
+  });
+
+  describe('getSessions', () => {
+    it('should return active sessions', async () => {
+      const sessions = [
+        {
+          id: 'session-1',
+          browser: 'Chrome',
+          operatingSystem: 'Windows',
+          ipAddress: '127.0.0.1',
+          createdAt: new Date(),
+          lastUsedAt: new Date(),
+        },
+      ];
+      usersService.getActiveSessions.mockResolvedValue(sessions);
+      sessionMapper.toSessionResponse.mockReturnValue(sessions[0]);
+
+      const result = await controller.getSessions({ userId: 'user-1' });
+
+      expect(result).toHaveLength(1);
+      expect(usersService.getActiveSessions).toHaveBeenCalledWith('user-1');
+      expect(sessionMapper.toSessionResponse).toHaveBeenCalled();
+    });
+  });
+
+  describe('revokeAllSessions', () => {
+    it('should revoke all other sessions', async () => {
+      usersService.globalLogout.mockResolvedValue(undefined);
+      usersService.getActiveSessions.mockResolvedValue([
+        { id: 'session-1', refreshTokenHash: 'hashed-token' },
+      ]);
+
+      const req = createMockRequest({
+        cookies: { refresh_token: 'refresh-token' },
+        headers: { 'user-agent': 'Mozilla/5.0' },
+      });
+      const res = createMockResponse();
+
+      const result = await controller.revokeAllSessions(
+        { userId: 'user-1' },
+        req,
+        res,
+      );
+
+      expect(result).toEqual({
+        message: 'All other sessions revoked successfully.',
+      });
+    });
+  });
+
+  describe('revokeSession', () => {
+    it('should revoke a specific session', async () => {
+      usersService.revokeSession.mockResolvedValue(undefined);
+
+      const req = createMockRequest({
+        headers: { 'user-agent': 'Mozilla/5.0' },
+      });
+
+      const result = await controller.revokeSession(
+        { userId: 'user-1' },
+        req,
+        'session-2',
+      );
+
+      expect(result).toEqual({ message: 'Session revoked successfully' });
+      expect(usersService.revokeSession).toHaveBeenCalledWith(
+        'user-1',
+        'session-2',
+        '127.0.0.1',
+        'Mozilla/5.0',
+      );
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('should call forgot password service', async () => {
+      usersService.forgotPassword.mockResolvedValue(undefined);
+
+      const result = await controller.forgotPassword({
+        email: 'test@example.com',
+      });
+
+      expect(result).toEqual({
+        message:
+          'If the account exists, password reset instructions have been sent.',
+      });
+      expect(usersService.forgotPassword).toHaveBeenCalledWith({
+        email: 'test@example.com',
+      });
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('should reset password', async () => {
+      usersService.resetPassword.mockResolvedValue(undefined);
+
+      const result = await controller.resetPassword({
+        email: 'test@example.com',
+        otp: '123456',
+        newPassword: 'NewPass1!',
+      });
+
+      expect(result).toEqual({
+        message: 'Password has been reset successfully. Please sign in again.',
+      });
+      expect(usersService.resetPassword).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        otp: '123456',
+        newPassword: 'NewPass1!',
+      });
     });
   });
 });

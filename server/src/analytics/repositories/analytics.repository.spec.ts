@@ -206,14 +206,36 @@ describe('AnalyticsRepository', () => {
   });
 
   describe('deleteOldAnalytics', () => {
-    it('deletes old analytics records in batches', async () => {
+    it('deletes old analytics records in single batch', async () => {
       prisma.$executeRaw.mockResolvedValue(50);
 
       const retentionDate = new Date('2024-01-01');
       const result = await repository.deleteOldAnalytics(retentionDate, 100);
 
       expect(typeof result).toBe('number');
-      expect(prisma.$executeRaw).toHaveBeenCalled();
+      expect(result).toBe(50);
+      expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
+    });
+
+    it('deletes in multiple batches when more records than batch size', async () => {
+      prisma.$executeRaw
+        .mockResolvedValueOnce(100) // first batch full
+        .mockResolvedValueOnce(50); // second batch partial
+
+      const retentionDate = new Date('2024-01-01');
+      const result = await repository.deleteOldAnalytics(retentionDate, 100);
+
+      expect(result).toBe(150);
+      expect(prisma.$executeRaw).toHaveBeenCalledTimes(2);
+    });
+
+    it('uses default batch size when not specified', async () => {
+      prisma.$executeRaw.mockResolvedValue(5000);
+
+      const retentionDate = new Date('2024-01-01');
+      const result = await repository.deleteOldAnalytics(retentionDate);
+
+      expect(result).toBe(5000);
     });
   });
 });

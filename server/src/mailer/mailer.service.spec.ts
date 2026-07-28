@@ -25,7 +25,14 @@ describe('MailerService', () => {
       };
       return config[key] ?? '';
     }),
-    get: jest.fn().mockReturnValue(587),
+    get: jest.fn().mockImplementation((key: string, defaultValue?: unknown) => {
+      const config: Record<string, unknown> = {
+        MAILER_PORT: 587,
+        MAILER_SECURE: 'false',
+        MAILER_NAME: undefined,
+      };
+      return key in config ? config[key] : defaultValue;
+    }),
   };
 
   const logger = {
@@ -38,6 +45,7 @@ describe('MailerService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockSendMail.mockResolvedValue({ messageId: 'test-id' });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -54,6 +62,38 @@ describe('MailerService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('getSmtpSecure', () => {
+    it('should return false for "false" value', () => {
+      configService.get.mockImplementation(
+        (key: string, defaultValue?: unknown) => {
+          if (key === 'MAILER_SECURE') return 'false';
+          return defaultValue;
+        },
+      );
+      expect(service.getSmtpSecure()).toBe(false);
+    });
+
+    it('should return true for "true" value', () => {
+      configService.get.mockImplementation(
+        (key: string, defaultValue?: unknown) => {
+          if (key === 'MAILER_SECURE') return 'true';
+          return defaultValue;
+        },
+      );
+      expect(service.getSmtpSecure()).toBe(true);
+    });
+
+    it('should return false for undefined', () => {
+      configService.get.mockImplementation(
+        (key: string, defaultValue?: unknown) => {
+          if (key === 'MAILER_SECURE') return undefined;
+          return defaultValue;
+        },
+      );
+      expect(service.getSmtpSecure()).toBe(false);
+    });
+  });
+
   describe('sendMail', () => {
     it('should send an email successfully', async () => {
       await service.sendMail({
@@ -62,7 +102,28 @@ describe('MailerService', () => {
         html: '<p>Test</p>',
       });
 
+      expect(mockSendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'user@example.com',
+          subject: 'Test',
+          html: '<p>Test</p>',
+        }),
+      );
       expect(logger.info).toHaveBeenCalled();
+    });
+
+    it('should send email with text body', async () => {
+      await service.sendMail({
+        to: 'user@example.com',
+        subject: 'Test',
+        text: 'Plain text body',
+      });
+
+      expect(mockSendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: 'Plain text body',
+        }),
+      );
     });
 
     it('should log error and throw on failure', async () => {
@@ -77,6 +138,27 @@ describe('MailerService', () => {
       ).rejects.toThrow('Failed to send email');
 
       expect(logger.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('sendPasswordResetEmail', () => {
+    it('should send password reset email', async () => {
+      await service.sendPasswordResetEmail('user@example.com', '123456');
+
+      expect(mockSendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'user@example.com',
+          subject: 'Reset your password',
+        }),
+      );
+    });
+
+    it('should throw if email sending fails', async () => {
+      mockSendMail.mockRejectedValueOnce(new Error('SMTP error'));
+
+      await expect(
+        service.sendPasswordResetEmail('user@example.com', '123456'),
+      ).rejects.toThrow('Failed to send email');
     });
   });
 });

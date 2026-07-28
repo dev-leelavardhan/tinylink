@@ -243,6 +243,54 @@ describe('UserRepository', () => {
     });
   });
 
+  describe('findMany', () => {
+    it('should find users with email filter', async () => {
+      const users = [{ id: 'user-1' }];
+      prisma.user.findMany.mockResolvedValue(users);
+
+      const result = await repository.findMany({ email: 'test@example.com' });
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+      });
+      expect(result).toEqual(users);
+    });
+
+    it('should find users with status filter', async () => {
+      const users = [{ id: 'user-1' }];
+      prisma.user.findMany.mockResolvedValue(users);
+
+      const result = await repository.findMany({ status: 'ACTIVE' });
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { status: 'ACTIVE' },
+      });
+      expect(result).toEqual(users);
+    });
+
+    it('should find users with no filter', async () => {
+      prisma.user.findMany.mockResolvedValue([]);
+
+      const result = await repository.findMany({});
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith({ where: {} });
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('updatePassword', () => {
+    it('should update user password', async () => {
+      prisma.user.update.mockResolvedValue({ id: 'user-1' });
+
+      await repository.updatePassword('user-1', 'new-hash');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { passwordHash: 'new-hash' },
+      });
+    });
+  });
+
   describe('OTP methods', () => {
     describe('createOtp', () => {
       it('should create an OTP record with type EMAIL_VERIFICATION', async () => {
@@ -266,6 +314,34 @@ describe('UserRepository', () => {
           data: {
             ...otpData,
             type: 'EMAIL_VERIFICATION',
+          },
+        });
+      });
+
+      it('should create an OTP record with type PASSWORD_RESET', async () => {
+        const otpData = {
+          userId: 'user-1',
+          email: 'test@example.com',
+          otpHash: 'hashed-otp',
+          salt: 'test-salt',
+          expiresAt: new Date(),
+          type: 'PASSWORD_RESET' as const,
+        };
+        prisma.verificationOtp.create.mockResolvedValue({
+          id: 'otp-1',
+          ...otpData,
+        });
+
+        await repository.createOtp(otpData);
+
+        expect(prisma.verificationOtp.create).toHaveBeenCalledWith({
+          data: {
+            userId: 'user-1',
+            email: 'test@example.com',
+            otpHash: 'hashed-otp',
+            salt: 'test-salt',
+            expiresAt: otpData.expiresAt,
+            type: 'PASSWORD_RESET',
           },
         });
       });

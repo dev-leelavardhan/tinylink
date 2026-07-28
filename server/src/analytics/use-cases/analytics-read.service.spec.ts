@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ForbiddenException } from '@nestjs/common';
 import { AnalyticsReadService } from './analytics-read.service';
 import { AnalyticsRepository } from '../repositories/analytics.repository';
 import { UrlRepository } from '../../urls/repositories/url.repository';
@@ -56,6 +57,30 @@ describe('AnalyticsReadService', () => {
     }).compile();
 
     service = module.get<AnalyticsReadService>(AnalyticsReadService);
+  });
+
+  describe('verifyOwnership', () => {
+    it('should pass when user owns the URL', async () => {
+      urlRepository.findById.mockResolvedValue({ id: 'url-1', userId: 'user-1' });
+
+      await expect(service.verifyOwnership('url-1', 'user-1')).resolves.not.toThrow();
+    });
+
+    it('should throw when URL not found', async () => {
+      urlRepository.findById.mockResolvedValue(null);
+
+      await expect(service.verifyOwnership('url-1', 'user-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should throw when user does not own URL', async () => {
+      urlRepository.findById.mockResolvedValue({ id: 'url-1', userId: 'user-2' });
+
+      await expect(service.verifyOwnership('url-1', 'user-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
   });
 
   describe('getAggregated', () => {

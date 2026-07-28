@@ -65,6 +65,22 @@ describe('GlobalExceptionFilter', () => {
     );
   });
 
+  it('should handle HttpException with object response without message', () => {
+    const exception = new HttpException(
+      { error: 'Bad Request' },
+      HttpStatus.BAD_REQUEST,
+    );
+
+    filter.catch(exception, mockHost);
+
+    expect(mockResponse.status).toHaveBeenCalledWith(400);
+    expect(mockResponse.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: 400,
+      }),
+    );
+  });
+
   it('should sanitize unknown errors to 500', () => {
     const exception = new Error('Internal error details');
 
@@ -91,5 +107,24 @@ describe('GlobalExceptionFilter', () => {
         timestamp: expect.any(String),
       }),
     );
+  });
+
+  it('should sanitize 500 error message in production', () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+
+    const exception = new Error('Secret internal details');
+
+    filter.catch(exception, mockHost);
+
+    expect(mockResponse.status).toHaveBeenCalledWith(500);
+    expect(mockResponse.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: 500,
+        message: 'Internal server error',
+      }),
+    );
+
+    process.env.NODE_ENV = originalEnv;
   });
 });
