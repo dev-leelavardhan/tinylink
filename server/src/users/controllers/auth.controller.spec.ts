@@ -223,11 +223,7 @@ describe('AuthController', () => {
       });
       const res = createMockResponse();
 
-      const result = await controller.logout(
-        { userId: 'user-1' },
-        req,
-        res,
-      );
+      const result = await controller.logout({ userId: 'user-1' }, req, res);
 
       expect(result).toEqual({ message: 'Logged out successfully.' });
     });
@@ -239,11 +235,7 @@ describe('AuthController', () => {
       });
       const res = createMockResponse();
 
-      const result = await controller.logout(
-        { userId: 'user-1' },
-        req,
-        res,
-      );
+      const result = await controller.logout({ userId: 'user-1' }, req, res);
 
       expect(result).toEqual({ message: 'Logged out successfully.' });
       expect(usersService.logout).not.toHaveBeenCalled();
@@ -259,11 +251,7 @@ describe('AuthController', () => {
       });
       const res = createMockResponse();
 
-      const result = await controller.logoutAll(
-        { userId: 'user-1' },
-        req,
-        res,
-      );
+      const result = await controller.logoutAll({ userId: 'user-1' }, req, res);
 
       expect(result).toEqual({
         message: 'Logged out from all devices successfully.',

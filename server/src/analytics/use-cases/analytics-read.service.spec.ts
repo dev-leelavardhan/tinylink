@@ -61,9 +61,14 @@ describe('AnalyticsReadService', () => {
 
   describe('verifyOwnership', () => {
     it('should pass when user owns the URL', async () => {
-      urlRepository.findById.mockResolvedValue({ id: 'url-1', userId: 'user-1' });
+      urlRepository.findById.mockResolvedValue({
+        id: 'url-1',
+        userId: 'user-1',
+      });
 
-      await expect(service.verifyOwnership('url-1', 'user-1')).resolves.not.toThrow();
+      await expect(
+        service.verifyOwnership('url-1', 'user-1'),
+      ).resolves.not.toThrow();
     });
 
     it('should throw when URL not found', async () => {
@@ -75,7 +80,10 @@ describe('AnalyticsReadService', () => {
     });
 
     it('should throw when user does not own URL', async () => {
-      urlRepository.findById.mockResolvedValue({ id: 'url-1', userId: 'user-2' });
+      urlRepository.findById.mockResolvedValue({
+        id: 'url-1',
+        userId: 'user-2',
+      });
 
       await expect(service.verifyOwnership('url-1', 'user-1')).rejects.toThrow(
         ForbiddenException,

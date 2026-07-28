@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Test, TestingModule } from '@nestjs/testing';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -44,30 +45,31 @@ describe('AuditService', () => {
         userAgent: 'Mozilla/5.0',
       });
 
-      expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
         data: {
-          userId: 'user-1',
-          event: 'LOGIN_SUCCESS',
-          metadata: { ip: '127.0.0.1' },
-          ipAddress: '127.0.0.1',
-          userAgent: 'Mozilla/5.0',
-        },
-      });
+          userId: string;
+          event: string;
+          metadata: Record<string, unknown>;
+          ipAddress: string;
+          userAgent: string;
+        };
+      };
+      expect(call.data.userId).toBe('user-1');
+      expect(call.data.event).toBe('LOGIN_SUCCESS');
+      expect(call.data.metadata).toEqual({ ip: '127.0.0.1' });
+      expect(call.data.ipAddress).toBe('127.0.0.1');
+      expect(call.data.userAgent).toBe('Mozilla/5.0');
       expect(logger.debug).toHaveBeenCalled();
     });
 
     it('should work without optional fields', async () => {
       await service.log({ event: 'LOGIN_FAILED' });
 
-      expect(prisma.auditLog.create).toHaveBeenCalledWith({
-        data: {
-          userId: undefined,
-          event: 'LOGIN_FAILED',
-          metadata: undefined,
-          ipAddress: undefined,
-          userAgent: undefined,
-        },
-      });
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { userId: string | undefined; event: string };
+      };
+      expect(call.data.userId).toBeUndefined();
+      expect(call.data.event).toBe('LOGIN_FAILED');
     });
 
     it('should not throw on database error', async () => {
@@ -84,144 +86,124 @@ describe('AuditService', () => {
   describe('logOtpGenerated', () => {
     it('should log OTP_GENERATED event', async () => {
       await service.logOtpGenerated('user-1', { type: 'EMAIL_VERIFICATION' });
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'OTP_GENERATED' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('OTP_GENERATED');
     });
   });
 
   describe('logOtpResent', () => {
     it('should log OTP_RESENT event', async () => {
       await service.logOtpResent('user-1');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'OTP_RESENT' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('OTP_RESENT');
     });
   });
 
   describe('logOtpVerified', () => {
     it('should log OTP_VERIFIED event', async () => {
       await service.logOtpVerified('user-1');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'OTP_VERIFIED' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('OTP_VERIFIED');
     });
   });
 
   describe('logOtpFailed', () => {
     it('should log OTP_FAILED event', async () => {
       await service.logOtpFailed('user-1');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'OTP_FAILED' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('OTP_FAILED');
     });
   });
 
   describe('logOtpExpired', () => {
     it('should log OTP_EXPIRED event', async () => {
       await service.logOtpExpired('user-1');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'OTP_EXPIRED' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('OTP_EXPIRED');
     });
   });
 
   describe('logOtpRateLimited', () => {
     it('should log OTP_RATE_LIMITED event', async () => {
       await service.logOtpRateLimited('user-1');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'OTP_RATE_LIMITED' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('OTP_RATE_LIMITED');
     });
   });
 
   describe('logOtpMaxAttempts', () => {
     it('should log OTP_MAX_ATTEMPTS event', async () => {
       await service.logOtpMaxAttempts('user-1');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'OTP_MAX_ATTEMPTS' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('OTP_MAX_ATTEMPTS');
     });
   });
 
   describe('logOtpResendCooldown', () => {
     it('should log OTP_RESEND_COOLDOWN event', async () => {
       await service.logOtpResendCooldown('user-1');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'OTP_RESEND_COOLDOWN' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('OTP_RESEND_COOLDOWN');
     });
   });
 
   describe('logEmailVerificationSuccess', () => {
     it('should log EMAIL_VERIFICATION_SUCCESS event', async () => {
       await service.logEmailVerificationSuccess('user-1');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            event: 'EMAIL_VERIFICATION_SUCCESS',
-          }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('EMAIL_VERIFICATION_SUCCESS');
     });
   });
 
   describe('logEmailVerificationFailed', () => {
     it('should log EMAIL_VERIFICATION_FAILED event', async () => {
       await service.logEmailVerificationFailed('user-1');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            event: 'EMAIL_VERIFICATION_FAILED',
-          }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('EMAIL_VERIFICATION_FAILED');
     });
   });
 
   describe('logLoginSuccess', () => {
     it('should log LOGIN_SUCCESS with IP and user agent', async () => {
       await service.logLoginSuccess('user-1', {}, '127.0.0.1', 'Mozilla/5.0');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            event: 'LOGIN_SUCCESS',
-            ipAddress: '127.0.0.1',
-            userAgent: 'Mozilla/5.0',
-          }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string; ipAddress: string; userAgent: string };
+      };
+      expect(call.data.event).toBe('LOGIN_SUCCESS');
+      expect(call.data.ipAddress).toBe('127.0.0.1');
+      expect(call.data.userAgent).toBe('Mozilla/5.0');
     });
   });
 
   describe('logLoginFailed', () => {
     it('should log LOGIN_FAILED without userId', async () => {
       await service.logLoginFailed({ reason: 'bad_password' }, '127.0.0.1');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            event: 'LOGIN_FAILED',
-            userId: undefined,
-            ipAddress: '127.0.0.1',
-          }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string; userId: string | undefined; ipAddress: string };
+      };
+      expect(call.data.event).toBe('LOGIN_FAILED');
+      expect(call.data.userId).toBeUndefined();
+      expect(call.data.ipAddress).toBe('127.0.0.1');
     });
   });
 
@@ -233,47 +215,41 @@ describe('AuditService', () => {
         '127.0.0.1',
         'Mozilla/5.0',
       );
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            event: 'ACCOUNT_LOCKED',
-            userId: 'user-1',
-          }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string; userId: string };
+      };
+      expect(call.data.event).toBe('ACCOUNT_LOCKED');
+      expect(call.data.userId).toBe('user-1');
     });
   });
 
   describe('logAccountUnlocked', () => {
     it('should log ACCOUNT_UNLOCKED event', async () => {
       await service.logAccountUnlocked('user-1');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'ACCOUNT_UNLOCKED' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('ACCOUNT_UNLOCKED');
     });
   });
 
   describe('logSessionCreated', () => {
     it('should log SESSION_CREATED event', async () => {
       await service.logSessionCreated('user-1', {}, '127.0.0.1', 'Mozilla/5.0');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'SESSION_CREATED' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('SESSION_CREATED');
     });
   });
 
   describe('logSessionRevoked', () => {
     it('should log SESSION_REVOKED event', async () => {
       await service.logSessionRevoked('user-1', {}, '127.0.0.1');
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'SESSION_REVOKED' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('SESSION_REVOKED');
     });
   });
 
@@ -285,11 +261,10 @@ describe('AuditService', () => {
         '127.0.0.1',
         'Mozilla/5.0',
       );
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'REFRESH_TOKEN_ISSUED' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('REFRESH_TOKEN_ISSUED');
     });
   });
 
@@ -298,11 +273,10 @@ describe('AuditService', () => {
       await service.logRefreshTokenReuse('user-1', {
         reusedSessionId: 'session-1',
       });
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'REFRESH_TOKEN_REUSE' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('REFRESH_TOKEN_REUSE');
     });
   });
 
@@ -314,11 +288,10 @@ describe('AuditService', () => {
         '127.0.0.1',
         'Mozilla/5.0',
       );
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'GLOBAL_LOGOUT' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('GLOBAL_LOGOUT');
     });
   });
 
@@ -330,22 +303,20 @@ describe('AuditService', () => {
         '127.0.0.1',
         'Mozilla/5.0',
       );
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'PASSWORD_CHANGED' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('PASSWORD_CHANGED');
     });
   });
 
   describe('logRefreshFailed', () => {
     it('should log REFRESH_FAILED event', async () => {
       await service.logRefreshFailed('user-1', { reason: 'session_revoked' });
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'REFRESH_FAILED' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('REFRESH_FAILED');
     });
   });
 
@@ -354,11 +325,10 @@ describe('AuditService', () => {
       await service.logSessionExpiredAttempt('user-1', {
         sessionId: 'session-1',
       });
-      expect(prisma.auditLog.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ event: 'SESSION_EXPIRED_ATTEMPT' }),
-        }),
-      );
+      const call = prisma.auditLog.create.mock.calls[0][0] as {
+        data: { event: string };
+      };
+      expect(call.data.event).toBe('SESSION_EXPIRED_ATTEMPT');
     });
   });
 });

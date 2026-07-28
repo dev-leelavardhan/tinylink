@@ -235,6 +235,7 @@ describe('SessionRepository', () => {
 
       expect(prisma.session.update).toHaveBeenCalledWith({
         where: { id: 'session-1' },
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         data: { lastUsedAt: expect.any(Date) },
       });
     });
@@ -247,6 +248,7 @@ describe('SessionRepository', () => {
       const result = await repository.deleteExpired();
 
       expect(prisma.session.deleteMany).toHaveBeenCalledWith({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         where: { expiresAt: { lt: expect.any(Date) } },
       });
       expect(result).toEqual({ count: 5 });
@@ -259,7 +261,10 @@ describe('SessionRepository', () => {
       prisma.session.findMany.mockResolvedValue(sessions);
       const since = new Date();
 
-      const result = await repository.findRecentlyRevokedByUserId('user-1', since);
+      const result = await repository.findRecentlyRevokedByUserId(
+        'user-1',
+        since,
+      );
 
       expect(prisma.session.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1', revokedAt: { gte: since } },
@@ -280,6 +285,7 @@ describe('SessionRepository', () => {
           revokedAt: null,
           id: { not: 'session-1' },
         },
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         data: { revokedAt: expect.any(Date) },
       });
       expect(result).toEqual({ count: 2 });

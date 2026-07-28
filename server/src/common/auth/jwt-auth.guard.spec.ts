@@ -1,16 +1,4 @@
 import { JwtAuthGuard, JwtAuthOptionalGuard } from './jwt-auth.guard';
-import type { ExecutionContext } from '@nestjs/common';
-
-function createMockContext(): ExecutionContext {
-  return {
-    switchToHttp: () => ({
-      getRequest: () => ({}),
-      getResponse: () => ({}),
-    }),
-    getHandler: () => jest.fn(),
-    getClass: () => jest.fn(),
-  } as unknown as ExecutionContext;
-}
 
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;

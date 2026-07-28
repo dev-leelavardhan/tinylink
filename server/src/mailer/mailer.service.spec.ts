@@ -116,6 +116,7 @@ describe('MailerService', () => {
       await service.sendMail({
         to: 'user@example.com',
         subject: 'Test',
+        html: '<p>Test</p>',
         text: 'Plain text body',
       });
 

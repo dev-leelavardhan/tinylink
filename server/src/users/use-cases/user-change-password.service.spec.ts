@@ -80,9 +80,7 @@ describe('UserChangePasswordService', () => {
         'user-1',
         'new-hash',
       );
-      expect(sessionRepository.revokeAllForUser).toHaveBeenCalledWith(
-        'user-1',
-      );
+      expect(sessionRepository.revokeAllForUser).toHaveBeenCalledWith('user-1');
       expect(auditService.logPasswordChanged).toHaveBeenCalled();
     });
 

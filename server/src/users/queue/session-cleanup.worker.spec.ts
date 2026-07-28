@@ -7,10 +7,10 @@ import { SessionCleanupService } from '../use-cases/session-cleanup.service';
 import { createLoggerMock } from '../../testing/mocks';
 
 jest.mock('bullmq', () => {
-  const onHandlers: Record<string, Function> = {};
+  const onHandlers: Record<string, (...args: unknown[]) => void> = {};
   return {
     Worker: jest.fn().mockImplementation(() => ({
-      on: jest.fn((event: string, handler: Function) => {
+      on: jest.fn((event: string, handler: (...args: unknown[]) => void) => {
         onHandlers[event] = handler;
       }),
       close: jest.fn(),

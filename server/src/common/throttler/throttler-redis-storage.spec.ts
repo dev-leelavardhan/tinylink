@@ -31,7 +31,13 @@ describe('ThrottlerRedisStorage', () => {
     it('should increment and return record for normal request', async () => {
       redis.eval.mockResolvedValue([1, 59000, 0, 0]);
 
-      const result = await storage.increment('test-key', 60000, 10, 60000, 'default');
+      const result = await storage.increment(
+        'test-key',
+        60000,
+        10,
+        60000,
+        'default',
+      );
 
       expect(result).toEqual({
         totalHits: 1,
@@ -54,7 +60,13 @@ describe('ThrottlerRedisStorage', () => {
     it('should return blocked when limit exceeded', async () => {
       redis.eval.mockResolvedValue([11, 5000, 1, 60000]);
 
-      const result = await storage.increment('test-key', 60000, 10, 60000, 'default');
+      const result = await storage.increment(
+        'test-key',
+        60000,
+        10,
+        60000,
+        'default',
+      );
 
       expect(result).toEqual({
         totalHits: 11,
@@ -67,7 +79,13 @@ describe('ThrottlerRedisStorage', () => {
     it('should use ttl when currentTtlMs is negative', async () => {
       redis.eval.mockResolvedValue([1, -1, 0, 0]);
 
-      const result = await storage.increment('test-key', 60000, 10, 60000, 'default');
+      const result = await storage.increment(
+        'test-key',
+        60000,
+        10,
+        60000,
+        'default',
+      );
 
       expect(result.timeToExpire).toBe(60);
     });

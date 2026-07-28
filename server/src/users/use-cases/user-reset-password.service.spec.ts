@@ -88,9 +88,7 @@ describe('UserResetPasswordService', () => {
         'user-1',
         'new-hash',
       );
-      expect(sessionRepository.revokeAllForUser).toHaveBeenCalledWith(
-        'user-1',
-      );
+      expect(sessionRepository.revokeAllForUser).toHaveBeenCalledWith('user-1');
       expect(otpService.invalidateOldOtps).toHaveBeenCalledWith('user-1');
       expect(auditService.log).toHaveBeenCalledWith(
         expect.objectContaining({ event: 'PASSWORD_RESET_COMPLETED' }),
@@ -100,9 +98,7 @@ describe('UserResetPasswordService', () => {
     it('should throw if user not found', async () => {
       userRepository.findByEmail.mockResolvedValue(null);
 
-      await expect(service.execute(dto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.execute(dto)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw if OTP is invalid', async () => {
@@ -112,9 +108,7 @@ describe('UserResetPasswordService', () => {
       });
       otpService.verify.mockResolvedValue(null);
 
-      await expect(service.execute(dto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.execute(dto)).rejects.toThrow(UnauthorizedException);
 
       expect(auditService.log).toHaveBeenCalledWith(
         expect.objectContaining({ event: 'PASSWORD_RESET_FAILED' }),
@@ -129,9 +123,7 @@ describe('UserResetPasswordService', () => {
       otpService.verify.mockResolvedValue(true);
       (argon2.verify as jest.Mock).mockResolvedValue(true);
 
-      await expect(service.execute(dto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.execute(dto)).rejects.toThrow(BadRequestException);
     });
   });
 });
