@@ -10,11 +10,18 @@ import { UserRepository } from './repositories/user.repository';
 import { SessionRepository } from './repositories/session.repository';
 import { RedisService } from '../redis/service/redis.service';
 import { MailerService } from '../mailer/mailer.service';
+import { ThrottlerStorageModule } from '../common/throttler/throttler-storage.module';
+import { ThrottlerRedisStorage } from '../common/throttler/throttler-redis-storage';
 
 const testConfig = {
   JWT_ACCESS_SECRET: 'test-access-secret-min-32-chars-long!!',
   JWT_REFRESH_SECRET: 'test-refresh-secret-min-32-chars-long!',
   DATABASE_URL: 'postgresql://localhost:5432/test',
+  REDIS_URL: 'redis://localhost:6379',
+  MAILER_HOST: 'smtp.example.com',
+  MAILER_USER: 'user',
+  MAILER_PASS: 'pass',
+  MAILER_FROM: 'noreply@example.com',
 };
 
 const prismaMock = {
@@ -49,6 +56,16 @@ const redisMock = {
   ping: jest.fn().mockResolvedValue('PONG'),
   quit: jest.fn().mockResolvedValue('OK'),
   connect: jest.fn().mockResolvedValue(undefined),
+  eval: jest.fn().mockResolvedValue([1, 60000, 0, 0]),
+  multi: jest.fn().mockReturnValue({
+    incr: jest.fn().mockReturnThis(),
+    expire: jest.fn().mockReturnThis(),
+    pttl: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue([
+      [null, 1],
+      [null, 60000],
+    ]),
+  }),
 };
 
 const mailerMock = {
@@ -66,7 +83,14 @@ describe('UsersModule', () => {
           cache: true,
           load: [() => testConfig],
         }),
-        ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
+        ThrottlerModule.forRootAsync({
+          imports: [ThrottlerStorageModule],
+          inject: [ThrottlerRedisStorage],
+          useFactory: (storage: ThrottlerRedisStorage) => ({
+            storage,
+            throttlers: [{ ttl: 60000, limit: 60 }],
+          }),
+        }),
         LoggerModule.forRoot({
           pinoHttp: { transport: { target: 'pino-pretty' } },
         }),

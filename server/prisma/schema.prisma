@@ -45,7 +45,6 @@ model Session {
   userId           String
   refreshTokenHash String
   refreshTokenId   String?   @unique
-  refreshTokenId   String?   @unique
   deviceName       String?
   browser          String?
   operatingSystem  String?

@@ -35,14 +35,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       }
     }
 
-    // In production, sanitize internal errors
-    if (
-      process.env.NODE_ENV === 'production' &&
-      status === HttpStatus.INTERNAL_SERVER_ERROR
-    ) {
-      message = 'Internal server error';
+    // Log all 5xx errors in every environment
+    if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
+      // In production, sanitize the message sent to the client
+      if (process.env.NODE_ENV === 'production') {
+        message = 'Internal server error';
+      }
 
-      // Log the actual error for debugging
       this.logger.error(
         {
           err: exception,
