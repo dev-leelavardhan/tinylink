@@ -20,6 +20,8 @@ describe('UsersService', () => {
     logout: jest.Mock;
     getActiveSessions: jest.Mock;
     revokeSession: jest.Mock;
+    globalLogout: jest.Mock;
+    logoutAll: jest.Mock;
   };
   let profileService: { getProfile: jest.Mock };
   let verifyEmailService: { verify: jest.Mock };
@@ -37,6 +39,8 @@ describe('UsersService', () => {
       logout: jest.fn(),
       getActiveSessions: jest.fn(),
       revokeSession: jest.fn(),
+      globalLogout: jest.fn(),
+      logoutAll: jest.fn(),
     };
     profileService = { getProfile: jest.fn() };
     verifyEmailService = { verify: jest.fn() };
@@ -220,6 +224,82 @@ describe('UsersService', () => {
       expect(resendVerificationService.resend).toHaveBeenCalledWith(
         'test@example.com',
       );
+    });
+  });
+
+  describe('globalLogout', () => {
+    it('should call loginService.globalLogout', async () => {
+      loginService.globalLogout.mockResolvedValue(undefined);
+
+      await service.globalLogout(
+        'user-1',
+        'session-1',
+        '127.0.0.1',
+        'Mozilla/5.0',
+      );
+
+      expect(loginService.globalLogout).toHaveBeenCalledWith(
+        'user-1',
+        'session-1',
+        '127.0.0.1',
+        'Mozilla/5.0',
+      );
+    });
+  });
+
+  describe('logoutAll', () => {
+    it('should call loginService.logoutAll', async () => {
+      loginService.logoutAll.mockResolvedValue(undefined);
+
+      await service.logoutAll('user-1', '127.0.0.1', 'Mozilla/5.0');
+
+      expect(loginService.logoutAll).toHaveBeenCalledWith(
+        'user-1',
+        '127.0.0.1',
+        'Mozilla/5.0',
+      );
+    });
+  });
+
+  describe('changePassword', () => {
+    it('should call changePasswordService.changePassword', async () => {
+      const dto = { currentPassword: 'old', newPassword: 'new' };
+      changePasswordService.changePassword.mockResolvedValue(undefined);
+
+      await service.changePassword('user-1', dto, '127.0.0.1', 'Mozilla/5.0');
+
+      expect(changePasswordService.changePassword).toHaveBeenCalledWith(
+        'user-1',
+        dto,
+        '127.0.0.1',
+        'Mozilla/5.0',
+      );
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('should call forgotPasswordService.execute', async () => {
+      const dto = { email: 'test@example.com' };
+      forgotPasswordService.execute.mockResolvedValue(undefined);
+
+      await service.forgotPassword(dto);
+
+      expect(forgotPasswordService.execute).toHaveBeenCalledWith(dto);
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('should call resetPasswordService.execute', async () => {
+      const dto = {
+        email: 'test@example.com',
+        otp: '123456',
+        newPassword: 'NewPass123!',
+      };
+      resetPasswordService.execute.mockResolvedValue(undefined);
+
+      await service.resetPassword(dto);
+
+      expect(resetPasswordService.execute).toHaveBeenCalledWith(dto);
     });
   });
 });

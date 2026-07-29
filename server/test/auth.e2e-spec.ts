@@ -84,10 +84,11 @@ describe('Auth Flow (e2e)', () => {
         .send({ email: 'dup-e2e@example.com', password: 'StrongPass123!' })
         .expect(201);
 
+      // Returns 201 to prevent email enumeration
       await request(app.getHttpServer() as Server)
         .post('/auth/register')
         .send({ email: 'dup-e2e@example.com', password: 'StrongPass123!' })
-        .expect(409);
+        .expect(201);
     });
   });
 
@@ -204,12 +205,12 @@ describe('Auth Flow (e2e)', () => {
       const cookies2 = getCookies(login2);
 
       await request(app.getHttpServer() as Server)
-        .delete('/auth/sessions')
+        .post('/auth/logout-all')
         .set('Authorization', `Bearer ${token2}`)
         .set('Cookie', cookies2)
         .expect(200);
 
-      // Session 1's token should no longer work
+      // Session 1's token should no longer work (tokenVersion bumped)
       const token1 = (login1.body as { accessToken: string }).accessToken;
       await request(app.getHttpServer() as Server)
         .get('/auth/sessions')
