@@ -10,7 +10,6 @@ describe('UrlCacheService', () => {
     get: jest.Mock;
     set: jest.Mock;
     setNegative: jest.Mock;
-    invalidate: jest.Mock;
   };
 
   const sampleCached: CachedIdentifier = {
@@ -33,7 +32,6 @@ describe('UrlCacheService', () => {
       get: jest.fn(),
       set: jest.fn(),
       setNegative: jest.fn(),
-      invalidate: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -90,16 +88,6 @@ describe('UrlCacheService', () => {
       await service.setNegative('abc');
 
       expect(cacheService.setNegative).toHaveBeenCalledWith('abc');
-    });
-  });
-
-  describe('invalidate', () => {
-    it('invalidates via cache service', async () => {
-      cacheService.invalidate.mockResolvedValue(undefined);
-
-      await service.invalidate('abc');
-
-      expect(cacheService.invalidate).toHaveBeenCalledWith('abc');
     });
   });
 });

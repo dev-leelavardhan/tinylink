@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { SHORT_CODE_STRATEGIES } from '../common/short-code/short-code.constants';
+import { SERVICE_ROLES } from '../common/service-role/service-role.util';
 
 export const envSchema = z
   .object({
@@ -8,6 +9,15 @@ export const envSchema = z
       .default('development'),
 
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+
+    // Process role: `web` serves HTTP, `worker` runs background jobs,
+    // `all` (default) runs both in a single process.
+    SERVICE_ROLE: z.enum(SERVICE_ROLES).default('all'),
+
+    // Pino log level.
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .default('info'),
 
     DATABASE_URL: z.url(),
 
@@ -43,6 +53,11 @@ export const envSchema = z
     // CORS configuration
     CORS_ORIGIN: z.string().optional(),
 
+    // Observability (OpenTelemetry). Tracing is enabled only when an OTLP
+    // endpoint is configured.
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
+    OTEL_SERVICE_NAME: z.string().optional(),
+
     // Mailer configuration
     MAILER_HOST: z.string().min(1, 'MAILER_HOST is required'),
     MAILER_PORT: z.coerce.number().int().default(587),
@@ -59,6 +74,21 @@ export const envSchema = z
         path: ['SHORT_CODE_HASHIDS_SALT'],
         message:
           'SHORT_CODE_HASHIDS_SALT is required when SHORT_CODE_STRATEGY=hashids',
+      });
+    }
+
+    // The snowflake worker id must be unique per replica; refuse to fall back to
+    // the shared default when the strategy is actually in use, otherwise codes
+    // can collide across instances.
+    if (
+      env.SHORT_CODE_STRATEGY === 'snowflake' &&
+      process.env.SHORT_CODE_SNOWFLAKE_WORKER_ID === undefined
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['SHORT_CODE_SNOWFLAKE_WORKER_ID'],
+        message:
+          'SHORT_CODE_SNOWFLAKE_WORKER_ID must be set explicitly and be unique per replica when SHORT_CODE_STRATEGY=snowflake',
       });
     }
   });

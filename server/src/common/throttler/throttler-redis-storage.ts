@@ -43,8 +43,7 @@ export class ThrottlerRedisStorage implements ThrottlerStorage {
     ttl: number,
     limit: number,
     blockDuration: number,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    throttlerName: string,
+    _throttlerName: string,
   ): Promise<ThrottlerStorageRecord> {
     const recordKey = `throttle:${key}`;
     const blockKey = `throttle:block:${key}`;

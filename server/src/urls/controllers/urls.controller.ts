@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
 
 import { ZodValidationPipe } from '../../common/zod/common.validation';
 import { createUrlSchema, type CreateUrlDto } from '../dto/create-url.dto';
@@ -42,7 +43,15 @@ export class UrlsController {
   }
 }
 
+/**
+ * Generous per-IP ceiling for the redirect hot path. Well above real human
+ * usage, but caps bot-driven analytics write amplification. One Redis INCR per
+ * hit, far cheaper than the per-click DB write it protects.
+ */
+const REDIRECT_THROTTLE = { limit: 600, ttl: 60_000 };
+
 @Controller()
+@Throttle({ default: REDIRECT_THROTTLE })
 export class RedirectController {
   constructor(private readonly urlsService: UrlsService) {}
 

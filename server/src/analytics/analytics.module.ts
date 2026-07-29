@@ -8,6 +8,7 @@ import { IdentifierRepository } from '../urls/repositories/identifier.repository
 import { AnalyticsController } from './controllers/analytics.controller';
 import { AnalyticsMapper } from './mappers/analytics.mapper';
 import { AnalyticsQueue } from './queue/analytics.queue';
+import { AnalyticsQueueMetrics } from './queue/analytics-queue.metrics';
 import { AnalyticsCleanupScheduler } from './queue/analytics-cleanup.scheduler';
 import { AnalyticsRepository } from './repositories/analytics.repository';
 import { AnalyticsService } from './service/analytics.service';
@@ -24,6 +25,7 @@ import { AnalyticsWorker } from './worker/analytics.worker';
   providers: [
     // Infrastructure
     AnalyticsQueue,
+    AnalyticsQueueMetrics,
     AnalyticsWorker,
     AnalyticsCleanupScheduler,
 

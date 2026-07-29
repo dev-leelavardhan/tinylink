@@ -23,8 +23,4 @@ export class UrlCacheService {
   async setNegative(code: string): Promise<void> {
     return this.cacheService.setNegative(code);
   }
-
-  async invalidate(code: string): Promise<void> {
-    return this.cacheService.invalidate(code);
-  }
 }

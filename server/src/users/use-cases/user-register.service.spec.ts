@@ -1,7 +1,4 @@
-import {
-  ConflictException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { InternalServerErrorException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { PinoLogger } from 'nestjs-pino';
@@ -131,7 +128,7 @@ describe('UserRegisterService', () => {
       expect(logger.error).toHaveBeenCalled();
     });
 
-    it('should throw ConflictException for duplicate email', async () => {
+    it('should return a generic success response for duplicate email (no enumeration)', async () => {
       const error = new PrismaClientKnownRequestError('Unique constraint', {
         code: 'P2002',
         clientVersion: '7.8.0',
@@ -139,7 +136,17 @@ describe('UserRegisterService', () => {
       });
       repository.create.mockRejectedValue(error);
 
-      await expect(service.register(dto)).rejects.toThrow(ConflictException);
+      const result = await service.register(dto);
+
+      // Response is identical to a fresh registration so an attacker cannot
+      // tell whether the email is already registered.
+      expect(result).toEqual({
+        message:
+          'Registration successful. Please check your email to verify your account.',
+        email: dto.email,
+      });
+      // No verification email should be sent for an already-registered address.
+      expect(mailerService.sendMail).not.toHaveBeenCalled();
     });
 
     it('should throw InternalServerErrorException for unexpected errors', async () => {

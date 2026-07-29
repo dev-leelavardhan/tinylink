@@ -67,4 +67,30 @@ describe('HttpsRedirectMiddleware', () => {
     );
     expect(mockNext).not.toHaveBeenCalled();
   });
+
+  it('should redirect to the BASE_URL host, ignoring a spoofed Host header', () => {
+    const previous = process.env.BASE_URL;
+    process.env.BASE_URL = 'https://api.tinylink.test';
+
+    mockRequest = {
+      secure: false,
+      headers: { host: 'evil.example.com' },
+      url: '/test',
+    };
+
+    try {
+      HttpsRedirectMiddleware(
+        mockRequest as Request,
+        mockResponse as unknown as Response,
+        mockNext,
+      );
+
+      expect(mockResponse.redirect).toHaveBeenCalledWith(
+        301,
+        'https://api.tinylink.test/test',
+      );
+    } finally {
+      process.env.BASE_URL = previous;
+    }
+  });
 });

@@ -1,6 +1,9 @@
 import 'dotenv/config';
+// Tracing must be imported before any instrumented module is loaded.
+import './tracing';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
 
 import { AppModule } from './app.module';
@@ -42,6 +45,19 @@ async function bootstrap() {
 
   app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
+
+  // OpenAPI / Swagger UI at /docs (JSON at /docs-json)
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('TinyLink API')
+    .setDescription('URL shortener API — links, redirects, auth and analytics.')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .addCookieAuth('refresh_token')
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('docs', app, document, {
+    swaggerOptions: { persistAuthorization: true },
+  });
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);

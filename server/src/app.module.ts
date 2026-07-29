@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 
 import { AppController } from './app.controller';
@@ -14,6 +15,7 @@ import { ThrottlerStorageModule } from './common/throttler/throttler-storage.mod
 import { ThrottlerRedisStorage } from './common/throttler/throttler-redis-storage';
 
 import { HealthModule } from './health/health.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { UrlsModule } from './urls/urls.module';
 import { UsersModule } from './users/users.module';
@@ -44,11 +46,18 @@ import { UsersModule } from './users/users.module';
 
     // Feature modules (order matters for route precedence)
     HealthModule,
+    MetricsModule,
     AnalyticsModule,
     UsersModule,
     UrlsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

@@ -26,6 +26,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<{ userId: string }> {
+    // Reject anything that is not an access token (defense in depth on top of
+    // the separate access/refresh signing secrets).
+    if (payload.type !== 'access') {
+      throw new UnauthorizedException(USER_ERROR_MESSAGES.INVALID_ACCESS_TOKEN);
+    }
+
     const user = await this.userRepository.findById(payload.sub);
     if (!user) {
       throw new UnauthorizedException(USER_ERROR_MESSAGES.USER_NOT_FOUND);

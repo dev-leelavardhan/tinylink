@@ -3,7 +3,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { createPrismaMock } from '../../testing/mocks';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ShortCodeCounterService } from './short-code-counter.service';
-import { SHORT_CODE_SEQUENCE } from './short-code.constants';
 
 describe('ShortCodeCounterService (unit)', () => {
   let service: ShortCodeCounterService;
@@ -20,18 +19,6 @@ describe('ShortCodeCounterService (unit)', () => {
     }).compile();
 
     service = module.get(ShortCodeCounterService);
-  });
-
-  it('creates the sequence on module init', async () => {
-    (prisma as { $executeRawUnsafe: jest.Mock }).$executeRawUnsafe = jest
-      .fn()
-      .mockResolvedValue(undefined);
-
-    await service.onModuleInit();
-
-    expect(
-      (prisma as { $executeRawUnsafe: jest.Mock }).$executeRawUnsafe,
-    ).toHaveBeenCalledWith(expect.stringContaining(SHORT_CODE_SEQUENCE));
   });
 
   it('returns the next sequence value', async () => {

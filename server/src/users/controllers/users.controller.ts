@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { type Request } from 'express';
 
 import { ZodValidationPipe } from '../../common/zod/common.validation';
@@ -17,7 +17,6 @@ import { UsersService } from '../service/users.service';
 import { getClientIp } from '../utils/auth.utils';
 
 @Controller('users')
-@UseGuards(ThrottlerGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -38,7 +37,7 @@ export class UsersController {
     @Body(new ZodValidationPipe(changePasswordSchema))
     dto: ChangePasswordDto,
   ): Promise<{ message: string }> {
-    const ip = getClientIp(req.headers, req.ip);
+    const ip = getClientIp(req.ip);
     const userAgent = req.headers['user-agent'];
 
     await this.usersService.changePassword(user.userId, dto, ip, userAgent);

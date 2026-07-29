@@ -20,7 +20,7 @@ jest.mock('bullmq', () => {
     .fn()
     .mockImplementation(
       (
-        queueName: string,
+        _queueName: string,
         callback: (job: { name: string; data: unknown }) => Promise<void>,
       ) => {
         processJobCallback = callback;
@@ -43,6 +43,7 @@ describe('AnalyticsWorker', () => {
   };
   let config: {
     getOrThrow: jest.Mock;
+    get: jest.Mock;
   };
   let logger: {
     setContext: jest.Mock;
@@ -66,6 +67,7 @@ describe('AnalyticsWorker', () => {
 
     config = {
       getOrThrow: jest.fn().mockReturnValue('redis://localhost:6379'),
+      get: jest.fn().mockReturnValue('all'),
     };
 
     logger = {

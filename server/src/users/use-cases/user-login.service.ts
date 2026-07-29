@@ -66,7 +66,12 @@ export class UserLoginService {
 
     const user = await this.userRepository.findByEmail(normalizedEmail);
 
+    // Verify credentials before revealing anything about the account. For an
+    // unknown email we still run an argon2 operation so response timing does
+    // not leak whether the account exists.
     if (!user) {
+      await this.equalizePasswordTiming(dto.password);
+
       await this.auditService.log({
         event: 'LOGIN_FAILED',
         metadata: { email: normalizedEmail, reason: 'user_not_found' },
@@ -76,6 +81,22 @@ export class UserLoginService {
       throw new UnauthorizedException(USER_ERROR_MESSAGES.LOGIN_FAILED);
     }
 
+    const passwordValid = await argon2.verify(user.passwordHash, dto.password);
+    if (!passwordValid) {
+      await this.bruteForceService.checkAndRecordFailedAttempt(user.id);
+
+      await this.auditService.log({
+        userId: user.id,
+        event: 'LOGIN_FAILED',
+        metadata: { reason: 'invalid_password' },
+        ipAddress: ip,
+        userAgent,
+      });
+
+      throw new UnauthorizedException(USER_ERROR_MESSAGES.LOGIN_FAILED);
+    }
+
+    // Credentials are valid — it is now safe to surface account state.
     const locked = await this.bruteForceService.isLocked(user.id);
     if (locked) {
       throw new ForbiddenException(USER_ERROR_MESSAGES.ACCOUNT_LOCKED);
@@ -105,26 +126,7 @@ export class UserLoginService {
       );
     }
 
-    const passwordValid = await argon2.verify(user.passwordHash, dto.password);
-    if (!passwordValid) {
-      await this.bruteForceService.checkAndRecordFailedAttempt(user.id);
-
-      await this.auditService.log({
-        userId: user.id,
-        event: 'LOGIN_FAILED',
-        metadata: { reason: 'invalid_password' },
-        ipAddress: ip,
-        userAgent,
-      });
-
-      throw new UnauthorizedException(USER_ERROR_MESSAGES.LOGIN_FAILED);
-    }
-
     await this.bruteForceService.resetFailedAttempts(user.id);
-
-    const updatedUser = await this.userRepository.incrementTokenVersion(
-      user.id,
-    );
 
     await this.userRepository.updateLastLoginMetadata(user.id, ip, userAgent);
 
@@ -159,7 +161,7 @@ export class UserLoginService {
 
     const { accessToken, refreshToken } = await this.generateTokens(
       user.id,
-      updatedUser.tokenVersion,
+      user.tokenVersion,
       session.id,
     );
 
@@ -204,6 +206,12 @@ export class UserLoginService {
       const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
       });
+
+      if (payload.type !== 'refresh') {
+        throw new UnauthorizedException(
+          USER_ERROR_MESSAGES.INVALID_REFRESH_TOKEN,
+        );
+      }
 
       const refreshTokenHash = hashRefreshToken(refreshToken);
 
@@ -301,26 +309,23 @@ export class UserLoginService {
       // The actual token is generated after the transaction succeeds.
       const tempRefreshTokenHash = hashRefreshToken(randomUUID());
 
-      const { session: newSession, newTokenVersion } =
-        await this.sessionRepository.rotateSession(
-          session.id,
-          {
-            user: { connect: { id: user.id } },
-            refreshTokenHash: tempRefreshTokenHash,
-            browser,
-            operatingSystem: os,
-            ipAddress: ip,
-            userAgent,
-            lastUsedAt: new Date(),
-            expiresAt,
-          },
-          user.id,
-        );
+      const { session: newSession } =
+        await this.sessionRepository.rotateSession(session.id, {
+          user: { connect: { id: user.id } },
+          refreshTokenHash: tempRefreshTokenHash,
+          browser,
+          operatingSystem: os,
+          ipAddress: ip,
+          userAgent,
+          lastUsedAt: new Date(),
+          expiresAt,
+        });
 
-      // Generate tokens with the atomically incremented tokenVersion
+      // Access tokens stay stateless across devices; per-session revocation
+      // (revokedAt) governs refresh validity, so tokenVersion is unchanged here.
       const newTokens = await this.generateTokens(
         user.id,
-        newTokenVersion,
+        user.tokenVersion,
         newSession.id,
       );
 
@@ -449,6 +454,10 @@ export class UserLoginService {
   ): Promise<void> {
     const result = await this.sessionRepository.revokeAllForUser(userId);
 
+    // Bump tokenVersion so already-issued access tokens for every device
+    // are rejected immediately (logout-all covers the current session too).
+    await this.userRepository.incrementTokenVersion(userId);
+
     await this.auditService.logGlobalLogout(
       userId,
       { revokedCount: result.count },
@@ -460,6 +469,22 @@ export class UserLoginService {
       { userId, revokedCount: result.count },
       USER_LOG_MESSAGES.LOGOUT_ALL_SUCCESS,
     );
+  }
+
+  /**
+   * Consume roughly the same CPU time as a real argon2 password verification so
+   * that logins for non-existent emails are not distinguishable by timing.
+   */
+  private async equalizePasswordTiming(password: string): Promise<void> {
+    try {
+      await argon2.hash(password, {
+        timeCost: USER_CONSTANTS.ARGON2_TIME_COST,
+        memoryCost: USER_CONSTANTS.ARGON2_MEMORY_COST,
+        parallelism: USER_CONSTANTS.ARGON2_PARALLELISM,
+      });
+    } catch {
+      // Timing side-channel mitigation only; ignore failures.
+    }
   }
 
   private async generateTokens(

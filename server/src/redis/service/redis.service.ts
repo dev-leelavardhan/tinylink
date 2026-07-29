@@ -18,7 +18,7 @@ export class RedisService
 {
   private readonly logger = new Logger(RedisService.name);
 
-  constructor(private readonly appConfig: ConfigService) {
+  constructor(appConfig: ConfigService) {
     super(appConfig.getOrThrow<string>('REDIS_URL'), {
       maxRetriesPerRequest: REDIS_CONSTANTS.MAX_RETRIES_PER_REQUEST,
       retryStrategy(times) {

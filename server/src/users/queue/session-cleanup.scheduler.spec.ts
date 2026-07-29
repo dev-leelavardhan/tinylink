@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { PinoLogger } from 'nestjs-pino';
 
 import { SessionCleanupScheduler } from './session-cleanup.scheduler';
@@ -22,6 +23,10 @@ describe('SessionCleanupScheduler', () => {
       providers: [
         SessionCleanupScheduler,
         { provide: SessionCleanupQueue, useValue: queue },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('all') },
+        },
         { provide: PinoLogger, useValue: logger },
       ],
     }).compile();

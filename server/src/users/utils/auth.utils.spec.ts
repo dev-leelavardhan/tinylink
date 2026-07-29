@@ -86,30 +86,22 @@ describe('auth.utils', () => {
   });
 
   describe('getClientIp', () => {
-    it('should extract IP from X-Forwarded-For header', () => {
-      const headers = { 'x-forwarded-for': '192.168.1.1, 10.0.0.1' };
-      const ip = getClientIp(headers, undefined);
+    it('should return the trusted req.ip (populated via trust proxy)', () => {
+      const ip = getClientIp('192.168.1.1');
 
       expect(ip).toBe('192.168.1.1');
     });
 
-    it('should handle array X-Forwarded-For header', () => {
-      const headers = { 'x-forwarded-for': ['192.168.1.1'] };
-      const ip = getClientIp(headers, undefined);
-
-      expect(ip).toBe('192.168.1.1');
-    });
-
-    it('should fall back to req.ip', () => {
-      const headers = {};
-      const ip = getClientIp(headers, '127.0.0.1');
+    it('should not trust client-controlled forwarded values', () => {
+      // The raw X-Forwarded-For header is intentionally ignored; only the
+      // proxy-resolved req.ip is used, so spoofed headers have no effect.
+      const ip = getClientIp('127.0.0.1');
 
       expect(ip).toBe('127.0.0.1');
     });
 
     it('should return undefined when no IP available', () => {
-      const headers = {};
-      const ip = getClientIp(headers, undefined);
+      const ip = getClientIp(undefined);
 
       expect(ip).toBeUndefined();
     });

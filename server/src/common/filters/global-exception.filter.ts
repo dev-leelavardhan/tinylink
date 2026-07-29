@@ -44,8 +44,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     // Log all 5xx errors in every environment
-    if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
-      // In production, sanitize the message sent to the client
+    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      // In production, sanitize the message sent to the client for any 5xx
+      // (not just 500) so internal details never leak.
       if (process.env.NODE_ENV === 'production') {
         message = 'Internal server error';
       }

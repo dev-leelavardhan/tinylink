@@ -6,6 +6,10 @@ import { AuditService } from './audit.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { createLoggerMock } from '../../testing/mocks';
 
+// Audit writes are detached (fire-and-forget); flush pending microtasks/timers
+// so background completion (debug/error logging) can be asserted.
+const flush = () => new Promise((resolve) => setImmediate(resolve));
+
 describe('AuditService', () => {
   let service: AuditService;
 
@@ -59,6 +63,7 @@ describe('AuditService', () => {
       expect(call.data.metadata).toEqual({ ip: '127.0.0.1' });
       expect(call.data.ipAddress).toBe('127.0.0.1');
       expect(call.data.userAgent).toBe('Mozilla/5.0');
+      await flush();
       expect(logger.debug).toHaveBeenCalled();
     });
 
@@ -79,6 +84,7 @@ describe('AuditService', () => {
         service.log({ event: 'LOGIN_SUCCESS', userId: 'user-1' }),
       ).resolves.not.toThrow();
 
+      await flush();
       expect(logger.error).toHaveBeenCalled();
     });
   });

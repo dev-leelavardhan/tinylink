@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 import { RedisService } from '../../redis/service/redis.service';
+import { MetricsService } from '../../metrics/metrics.service';
 import {
   CACHE_CONSTANTS,
   CACHE_LOG_MESSAGES,
@@ -14,6 +15,7 @@ export class CacheService {
 
   constructor(
     private readonly redis: RedisService,
+    private readonly metrics: MetricsService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(CacheService.name);
@@ -33,18 +35,22 @@ export class CacheService {
       const raw = await this.redis.get(this.key(shortCode));
 
       if (raw === null) {
+        this.metrics.recordCacheMiss();
         this.logger.debug({ shortCode }, CACHE_LOG_MESSAGES.CACHE_MISS);
         return { status: 'miss' };
       }
 
       if (raw === CACHE_CONSTANTS.NEGATIVE_SENTINEL) {
+        this.metrics.recordCacheHit();
         this.logger.debug({ shortCode }, CACHE_LOG_MESSAGES.CACHE_HIT_NEGATIVE);
         return { status: 'negative' };
       }
 
+      this.metrics.recordCacheHit();
       this.logger.debug({ shortCode }, CACHE_LOG_MESSAGES.CACHE_HIT);
       return { status: 'hit', data: JSON.parse(raw) as CachedIdentifier };
     } catch (err: unknown) {
+      this.metrics.recordCacheMiss();
       this.logger.warn({ shortCode, err }, CACHE_LOG_MESSAGES.CACHE_GET_FAILED);
       return { status: 'miss' };
     }
@@ -82,31 +88,6 @@ export class CacheService {
         { shortCode, err },
         CACHE_LOG_MESSAGES.CACHE_SET_NEGATIVE_FAILED,
       );
-    }
-  }
-
-  /**
-   * Invalidate a cached entry (on update/delete/disable).
-   */
-  async invalidate(shortCode: string): Promise<void> {
-    try {
-      await this.redis.del(this.key(shortCode));
-      this.logger.debug({ shortCode }, CACHE_LOG_MESSAGES.CACHE_DEL);
-    } catch (err: unknown) {
-      this.logger.warn({ shortCode, err }, CACHE_LOG_MESSAGES.CACHE_DEL_FAILED);
-    }
-  }
-
-  /**
-   * Invalidate both shortCode and customAlias keys if they differ.
-   */
-  async invalidateAll(
-    shortCode: string,
-    customAlias: string | null,
-  ): Promise<void> {
-    await this.invalidate(shortCode);
-    if (customAlias && customAlias !== shortCode) {
-      await this.invalidate(customAlias);
     }
   }
 }

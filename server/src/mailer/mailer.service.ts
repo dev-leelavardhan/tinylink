@@ -20,13 +20,17 @@ export class MailerService {
   ) {
     this.logger.setContext(MailerService.name);
 
+    const port = this.config.get<number>(
+      'MAILER_PORT',
+      MAILER_CONSTANTS.DEFAULT_PORT,
+    );
+    const secure = this.getSmtpSecure();
+    this.assertSecureTransport(port, secure);
+
     this.transporter = nodemailer.createTransport({
       host: this.config.getOrThrow<string>('MAILER_HOST'),
-      port: this.config.get<number>(
-        'MAILER_PORT',
-        MAILER_CONSTANTS.DEFAULT_PORT,
-      ),
-      secure: this.getSmtpSecure(),
+      port,
+      secure,
       auth: {
         user: this.config.getOrThrow<string>('MAILER_USER'),
         pass: this.config.getOrThrow<string>('MAILER_PASS'),
@@ -41,6 +45,27 @@ export class MailerService {
     const secureFromEnv = this.config.get<string>('MAILER_SECURE');
     if (secureFromEnv === undefined) return false;
     return secureFromEnv !== 'false';
+  }
+
+  /**
+   * Guard against sending SMTP credentials over an unencrypted transport.
+   * Port 465 requires implicit TLS (secure=true) — a hard error. Any other
+   * non-STARTTLS-implied port without secure mode is flagged in production.
+   */
+  private assertSecureTransport(port: number, secure: boolean): void {
+    if (port === 465 && !secure) {
+      throw new Error(
+        'MAILER_SECURE must be true when MAILER_PORT=465 (implicit TLS).',
+      );
+    }
+
+    const isProduction = this.config.get<string>('NODE_ENV') === 'production';
+    if (isProduction && !secure && port !== 587) {
+      this.logger.warn(
+        { port },
+        'SMTP is configured without TLS (MAILER_SECURE=false) on a non-587 port; verify credentials are not sent in cleartext.',
+      );
+    }
   }
 
   private getFromAddress(): string {

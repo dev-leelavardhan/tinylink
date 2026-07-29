@@ -320,12 +320,12 @@ describe('SessionRepository', () => {
   });
 
   describe('rotateSession', () => {
-    it('should revoke old session, increment tokenVersion, and create new session atomically', async () => {
+    it('should revoke old session and create new session atomically without touching tokenVersion', async () => {
       const newSession = { id: 'session-2', refreshTokenHash: 'new-hash' };
 
       const mockTx = {
         $executeRaw: jest.fn().mockResolvedValue(1),
-        user: { update: jest.fn().mockResolvedValue({ tokenVersion: 2 }) },
+        user: { update: jest.fn() },
         session: { create: jest.fn().mockResolvedValue(newSession) },
       };
 
@@ -342,20 +342,16 @@ describe('SessionRepository', () => {
       const result = await repository.rotateSession(
         'session-1',
         newSessionData,
-        'user-1',
       );
 
       expect(prisma.$transaction).toHaveBeenCalled();
       expect(mockTx.$executeRaw).toHaveBeenCalled();
-      expect(mockTx.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-1' },
-        data: { tokenVersion: { increment: 1 } },
-        select: { tokenVersion: true },
-      });
+      // tokenVersion must NOT be bumped on refresh (keeps other devices valid).
+      expect(mockTx.user.update).not.toHaveBeenCalled();
       expect(mockTx.session.create).toHaveBeenCalledWith({
         data: newSessionData,
       });
-      expect(result).toEqual({ session: newSession, newTokenVersion: 2 });
+      expect(result).toEqual({ session: newSession });
     });
 
     it('should throw when session already revoked (concurrent refresh)', async () => {
@@ -376,7 +372,7 @@ describe('SessionRepository', () => {
       };
 
       await expect(
-        repository.rotateSession('session-1', newSessionData, 'user-1'),
+        repository.rotateSession('session-1', newSessionData),
       ).rejects.toThrow('Session already revoked');
     });
   });

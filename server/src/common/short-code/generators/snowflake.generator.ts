@@ -15,6 +15,12 @@ import {
 } from '../short-code.constants';
 import { encodeBase62 } from '../utils/base62';
 
+/**
+ * In-memory snowflake generator. The worker id MUST be unique per running
+ * instance (see env validation for SHORT_CODE_SNOWFLAKE_WORKER_ID); two replicas
+ * sharing a worker id can produce colliding ids. Inject a distinct id per
+ * replica (e.g. from the orchestrator's pod ordinal).
+ */
 @Injectable()
 export class SnowflakeGenerator implements ShortCodeGenerator {
   private readonly workerId: bigint;
@@ -35,8 +41,7 @@ export class SnowflakeGenerator implements ShortCodeGenerator {
     this.workerId = workerId;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  generate(options?: ShortCodeGenerateOptions): string {
+  generate(_options?: ShortCodeGenerateOptions): string {
     const id = this.nextId();
     return encodeBase62(id);
   }

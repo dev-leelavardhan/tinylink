@@ -26,17 +26,11 @@ export function daysAgo(days: number): Date {
 // ============================================================================
 
 export function normalizeEmail(email: string): string {
-  const normalized = email.trim().toLowerCase();
-  const [local, domain] = normalized.split('@');
-  if (!local || !domain) return normalized;
-
-  // Gmail-style normalization: strip dots and plus aliases
-  if (domain === 'gmail.com' || domain === 'googlemail.com') {
-    const cleaned = local.replace(/\./g, '').split('+')[0];
-    return `${cleaned}@gmail.com`;
-  }
-
-  return normalized;
+  // Canonicalize consistently across every flow (register, verify, login,
+  // forgot, reset): trim + lowercase only. Provider-specific rules (e.g. Gmail
+  // dot/plus stripping) are intentionally NOT applied, so the value always
+  // matches what registration/verification stored.
+  return email.trim().toLowerCase();
 }
 
 // ============================================================================
@@ -83,16 +77,44 @@ function extractOs(userAgent: string): string {
 // IP Address Utilities
 // ============================================================================
 
-export function getClientIp(
-  headers: Record<string, string | string[] | undefined>,
-  ip: string | undefined,
-): string | undefined {
-  const forwardedFor = headers['x-forwarded-for'];
-  if (forwardedFor) {
-    const ipStr = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
-    const firstIp = ipStr.split(',')[0].trim();
-    if (firstIp) return firstIp;
+/**
+ * Resolve the client IP. Express is configured with `trust proxy = 1`
+ * (see apply-middleware.ts), so `req.ip` already reflects the real client
+ * address from the trusted proxy. We deliberately do NOT parse the raw
+ * `X-Forwarded-For` header here because it is client-controlled and would let
+ * callers spoof their IP to bypass IP-based rate limits.
+ */
+export function getClientIp(ip: string | undefined): string | undefined {
+  return ip;
+}
+
+/**
+ * Reduce the precision of a client IP before it is persisted as PII on the user
+ * record (last-login metadata). IPv4 drops the final octet; IPv6 keeps only the
+ * /48 routing prefix. This retains coarse "where did I last log in" signal for
+ * security review while avoiding storage of a fully-identifying address (GDPR
+ * data-minimisation). Analytics uses a separate salted hash.
+ */
+export function anonymizeIp(ip: string | undefined): string | undefined {
+  if (!ip) return ip;
+
+  if (ip.includes('.')) {
+    const octets = ip.split('.');
+    if (octets.length === 4) {
+      octets[3] = '0';
+      return octets.join('.');
+    }
+    return ip;
   }
+
+  if (ip.includes(':')) {
+    const groups = ip.split(':').filter((g) => g.length > 0);
+    if (groups.length >= 3) {
+      return `${groups.slice(0, 3).join(':')}::`;
+    }
+    return ip;
+  }
+
   return ip;
 }
 

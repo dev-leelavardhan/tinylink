@@ -104,6 +104,7 @@ export const USER_ERROR_MESSAGES = {
   ACCOUNT_LOCKED: 'Too many failed login attempts. Try again later.',
   USER_NOT_FOUND: 'User not found',
   TOKEN_REVOKED: 'Token has been revoked',
+  INVALID_ACCESS_TOKEN: 'Invalid access token',
   MISSING_REFRESH_TOKEN: 'Authentication required.',
   INVALID_REFRESH_TOKEN: 'Invalid refresh token',
   SESSION_EXPIRED: 'Session expired.',

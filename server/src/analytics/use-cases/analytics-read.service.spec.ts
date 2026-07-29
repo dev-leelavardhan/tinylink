@@ -79,11 +79,24 @@ describe('AnalyticsReadService', () => {
     });
 
     it('should throw when user has no identifier for the URL', async () => {
-      identifierRepository.findByUrlAndOwner.mockResolvedValue(null);
+      identifierRepository.findAllByUrlAndOwner.mockResolvedValue([]);
 
       await expect(service.verifyOwnership('url-1', 'user-1')).rejects.toThrow(
         ForbiddenException,
       );
+    });
+
+    it('should grant access for disabled/expired/custom-alias identifiers the user owns', async () => {
+      // findByUrlAndOwner filters out disabled/expired and defaults to
+      // GENERATED-only, so ownership must rely on findAllByUrlAndOwner.
+      identifierRepository.findByUrlAndOwner.mockResolvedValue(null);
+      identifierRepository.findAllByUrlAndOwner.mockResolvedValue([
+        { id: 'alias-1' },
+      ]);
+
+      const result = await service.verifyOwnership('url-1', 'user-1');
+
+      expect(result).toEqual(['alias-1']);
     });
   });
 

@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 
 export const pinoConfig: Params = {
   pinoHttp: {
+    level: process.env.LOG_LEVEL ?? 'info',
+
     genReqId: (req, res) => {
       const existing = req.headers['x-request-id'];
 

@@ -48,7 +48,38 @@ export class BruteForceService {
     } catch (err: unknown) {
       this.logger.warn(
         { err, userId },
-        'Failed to record brute force attempt (Redis unavailable)',
+        'Failed to record brute force attempt in Redis — falling back to DB',
+      );
+      await this.recordFailedAttemptInDb(userId);
+    }
+  }
+
+  /**
+   * DB-backed brute-force counting used when Redis is unavailable, so account
+   * lockout still triggers (fail-closed) instead of allowing unlimited guesses.
+   */
+  private async recordFailedAttemptInDb(userId: string): Promise<void> {
+    try {
+      const user =
+        await this.userRepository.incrementFailedLoginAttempts(userId);
+
+      if (
+        user.failedLoginAttempts >= USER_CONSTANTS.MAX_FAILED_LOGIN_ATTEMPTS
+      ) {
+        const lockUntil = new Date(
+          Date.now() + USER_CONSTANTS.LOCK_DURATION_MINUTES * 60 * 1000,
+        );
+        await this.userRepository.lockAccount(userId, lockUntil);
+
+        this.logger.warn(
+          { userId, failedAttempts: user.failedLoginAttempts },
+          USER_LOG_MESSAGES.ACCOUNT_LOCKED,
+        );
+      }
+    } catch (dbErr: unknown) {
+      this.logger.error(
+        { err: dbErr, userId },
+        'Failed to record brute force attempt in database',
       );
     }
   }

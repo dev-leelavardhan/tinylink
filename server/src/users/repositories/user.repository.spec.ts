@@ -136,7 +136,8 @@ describe('UserRepository', () => {
         data: {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           lastLoginAt: expect.any(Date),
-          lastLoginIp: '127.0.0.1',
+          // IP is anonymized before storage (final octet dropped).
+          lastLoginIp: '127.0.0.0',
           lastUserAgent: 'Mozilla/5.0',
         },
       });

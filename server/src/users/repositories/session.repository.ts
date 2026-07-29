@@ -133,8 +133,7 @@ export class SessionRepository {
   async rotateSession(
     oldSessionId: string,
     newSessionData: Prisma.SessionCreateInput,
-    userId: string,
-  ): Promise<{ session: Session; newTokenVersion: number }> {
+  ): Promise<{ session: Session }> {
     return this.prisma.$transaction(
       async (tx) => {
         const revokedAt = new Date();
@@ -148,15 +147,9 @@ export class SessionRepository {
           );
         }
 
-        const updatedUser = await tx.user.update({
-          where: { id: userId },
-          data: { tokenVersion: { increment: 1 } },
-          select: { tokenVersion: true },
-        });
-
         const session = await tx.session.create({ data: newSessionData });
 
-        return { session, newTokenVersion: updatedUser.tokenVersion };
+        return { session };
       },
       { isolationLevel: 'Serializable' },
     );

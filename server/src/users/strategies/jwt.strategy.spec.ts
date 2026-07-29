@@ -43,6 +43,7 @@ describe('JwtStrategy', () => {
         iss: 'tinylink',
         aud: 'tinylink-api',
         jti: 'test-jti',
+        type: 'access' as const,
       };
       const user = {
         id: 'user-1',
@@ -57,6 +58,24 @@ describe('JwtStrategy', () => {
       expect(result).toEqual({ userId: 'user-1' });
     });
 
+    it('should throw UnauthorizedException if token type is not access', async () => {
+      const payload = {
+        sub: 'user-1',
+        tokenVersion: 0,
+        iss: 'tinylink',
+        aud: 'tinylink-api',
+        jti: 'test-jti',
+        type: 'refresh' as const,
+      };
+
+      await expect(strategy.validate(payload)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      // A refresh token must never authenticate a request; the user is not
+      // even looked up.
+      expect(repository.findById).not.toHaveBeenCalled();
+    });
+
     it('should throw UnauthorizedException if user not found', async () => {
       const payload = {
         sub: 'nonexistent',
@@ -64,6 +83,7 @@ describe('JwtStrategy', () => {
         iss: 'tinylink',
         aud: 'tinylink-api',
         jti: 'test-jti',
+        type: 'access' as const,
       };
       repository.findById.mockResolvedValue(null);
 
@@ -79,6 +99,7 @@ describe('JwtStrategy', () => {
         iss: 'tinylink',
         aud: 'tinylink-api',
         jti: 'test-jti',
+        type: 'access' as const,
       };
       const user = {
         id: 'user-1',
@@ -100,6 +121,7 @@ describe('JwtStrategy', () => {
         iss: 'tinylink',
         aud: 'tinylink-api',
         jti: 'test-jti',
+        type: 'access' as const,
       };
       const user = {
         id: 'user-1',
@@ -121,6 +143,7 @@ describe('JwtStrategy', () => {
         iss: 'tinylink',
         aud: 'tinylink-api',
         jti: 'test-jti',
+        type: 'access' as const,
       };
       const user = {
         id: 'user-1',

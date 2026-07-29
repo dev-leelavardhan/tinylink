@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { PinoLogger } from 'nestjs-pino';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
@@ -69,7 +65,19 @@ export class UserRegisterService {
         error instanceof PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        throw new ConflictException(USER_ERROR_MESSAGES.EMAIL_EXISTS);
+        // Do not reveal that the email is already registered (enumeration).
+        // Return the same generic response as a fresh registration; the owner
+        // of an existing account keeps using their original credentials.
+        this.logger.info(
+          { email: dto.email },
+          'Registration attempted for existing email',
+        );
+
+        return {
+          message:
+            'Registration successful. Please check your email to verify your account.',
+          email: dto.email,
+        };
       }
 
       this.logger.error({ err: error }, USER_ERROR_MESSAGES.REGISTER_FAILED);

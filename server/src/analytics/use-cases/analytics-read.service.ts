@@ -18,21 +18,20 @@ export class AnalyticsReadService {
   }
 
   async verifyOwnership(urlId: string, userId: string): Promise<string[]> {
-    const identifier = await this.identifierRepository.findByUrlAndOwner(
+    // Ownership must cover every identifier the user has for this URL,
+    // including custom aliases and disabled/expired links — the owner should
+    // still be able to read historical analytics for those.
+    const identifiers = await this.identifierRepository.findAllByUrlAndOwner(
       urlId,
       userId,
     );
-    if (!identifier) {
+
+    if (identifiers.length === 0) {
       throw new ForbiddenException(
         'You do not have access to this URL analytics',
       );
     }
 
-    // Return all identifier IDs owned by this user for this URL
-    const identifiers = await this.identifierRepository.findAllByUrlAndOwner(
-      urlId,
-      userId,
-    );
     return identifiers.map((i) => i.id);
   }
 

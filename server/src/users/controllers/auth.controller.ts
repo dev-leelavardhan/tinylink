@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { type Request, type Response } from 'express';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 
 import { ZodValidationPipe } from '../../common/zod/common.validation';
 import { loginUserSchema, type LoginUserDto } from '../dto/login-user.dto';
@@ -55,7 +55,6 @@ import {
 import { USER_ERROR_MESSAGES } from '../constants/user.constants';
 
 @Controller('auth')
-@UseGuards(ThrottlerGuard)
 export class AuthController {
   constructor(
     private readonly usersService: UsersService,
@@ -79,7 +78,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<Omit<LoginResult, 'refreshToken'>> {
-    const ip = getClientIp(req.headers, req.ip);
+    const ip = getClientIp(req.ip);
     const userAgent = req.headers['user-agent'];
 
     const result = await this.usersService.login(dto, ip, userAgent);
@@ -108,7 +107,7 @@ export class AuthController {
       );
     }
 
-    const ip = getClientIp(req.headers, req.ip);
+    const ip = getClientIp(req.ip);
     const userAgent = req.headers['user-agent'];
 
     const result = await this.usersService.refresh(refreshToken, ip, userAgent);
@@ -135,7 +134,7 @@ export class AuthController {
     );
 
     if (refreshToken) {
-      const ip = getClientIp(req.headers, req.ip);
+      const ip = getClientIp(req.ip);
       const userAgent = req.headers['user-agent'];
 
       const refreshTokenHash = hashRefreshToken(refreshToken);
@@ -178,7 +177,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ message: string }> {
-    const ip = getClientIp(req.headers, req.ip);
+    const ip = getClientIp(req.ip);
     const userAgent = req.headers['user-agent'];
 
     const refreshToken = getRefreshTokenFromCookie(
@@ -215,7 +214,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ message: string }> {
-    const ip = getClientIp(req.headers, req.ip);
+    const ip = getClientIp(req.ip);
     const userAgent = req.headers['user-agent'];
 
     await this.usersService.logoutAll(user.userId, ip, userAgent);
@@ -232,7 +231,7 @@ export class AuthController {
     @Req() req: Request,
     @Param('sessionId') sessionId: string,
   ): Promise<{ message: string }> {
-    const ip = getClientIp(req.headers, req.ip);
+    const ip = getClientIp(req.ip);
     const userAgent = req.headers['user-agent'];
 
     await this.usersService.revokeSession(

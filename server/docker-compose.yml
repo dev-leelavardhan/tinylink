@@ -1,3 +1,8 @@
+# =============================================================================
+# LOCAL DEVELOPMENT ONLY — do not use in production.
+# Uses default credentials, publishes datastore ports to the host, and runs
+# Redis without a password. For production use docker-compose.prod.yml.
+# =============================================================================
 services:
   postgres:
     image: postgres:16

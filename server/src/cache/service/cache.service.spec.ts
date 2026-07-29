@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CacheService } from './cache.service';
 import { RedisService } from '../../redis/service/redis.service';
+import { MetricsService } from '../../metrics/metrics.service';
 import { CACHE_CONSTANTS } from '../constants/cache.constants';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -36,6 +37,13 @@ describe('CacheService', () => {
       providers: [
         CacheService,
         { provide: RedisService, useValue: redis },
+        {
+          provide: MetricsService,
+          useValue: {
+            recordCacheHit: jest.fn(),
+            recordCacheMiss: jest.fn(),
+          },
+        },
         {
           provide: PinoLogger,
           useValue: logger,
@@ -172,58 +180,6 @@ describe('CacheService', () => {
       await service.setNegative('test-code');
 
       expect(logger.warn).toHaveBeenCalled();
-    });
-  });
-
-  describe('invalidate', () => {
-    it('should delete cache entry', async () => {
-      redis.del.mockResolvedValue(1);
-
-      await service.invalidate('test-code');
-
-      expect(redis.del).toHaveBeenCalledWith(
-        `${CACHE_CONSTANTS.KEY_PREFIX}test-code`,
-      );
-    });
-
-    it('should handle Redis error gracefully', async () => {
-      redis.del.mockRejectedValue(new Error('Redis connection failed'));
-
-      await service.invalidate('test-code');
-
-      expect(logger.warn).toHaveBeenCalled();
-    });
-  });
-
-  describe('invalidateAll', () => {
-    it('should invalidate both shortCode and customAlias', async () => {
-      redis.del.mockResolvedValue(1);
-
-      await service.invalidateAll('test-code', 'custom-alias');
-
-      expect(redis.del).toHaveBeenCalledTimes(2);
-      expect(redis.del).toHaveBeenCalledWith(
-        `${CACHE_CONSTANTS.KEY_PREFIX}test-code`,
-      );
-      expect(redis.del).toHaveBeenCalledWith(
-        `${CACHE_CONSTANTS.KEY_PREFIX}custom-alias`,
-      );
-    });
-
-    it('should only invalidate shortCode when customAlias is null', async () => {
-      redis.del.mockResolvedValue(1);
-
-      await service.invalidateAll('test-code', null);
-
-      expect(redis.del).toHaveBeenCalledTimes(1);
-    });
-
-    it('should only invalidate shortCode when customAlias equals shortCode', async () => {
-      redis.del.mockResolvedValue(1);
-
-      await service.invalidateAll('test-code', 'test-code');
-
-      expect(redis.del).toHaveBeenCalledTimes(1);
     });
   });
 });

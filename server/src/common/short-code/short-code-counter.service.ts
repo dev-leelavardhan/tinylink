@@ -1,16 +1,13 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SHORT_CODE_SEQUENCE } from './short-code.constants';
 
 @Injectable()
-export class ShortCodeCounterService implements OnModuleInit {
+export class ShortCodeCounterService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async onModuleInit(): Promise<void> {
-    await this.prisma.$executeRawUnsafe(
-      `CREATE SEQUENCE IF NOT EXISTS ${SHORT_CODE_SEQUENCE}`,
-    );
-  }
+  // The `short_code_counter` sequence is created by Prisma migrations
+  // (see migration `identifier_model`), so no runtime DDL is needed here.
 
   async next(): Promise<bigint> {
     const rows = await this.prisma.$queryRawUnsafe<Array<{ nextval: bigint }>>(

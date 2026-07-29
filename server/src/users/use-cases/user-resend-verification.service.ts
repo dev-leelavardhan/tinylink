@@ -5,7 +5,6 @@ import { USER_LOG_MESSAGES } from '../constants/user.constants';
 import { UserRepository } from '../repositories/user.repository';
 import { UserOtpService } from './user-otp.service';
 import { MailerService } from '../../mailer/mailer.service';
-import { AuditService } from '../../common/audit/audit.service';
 
 @Injectable()
 export class UserResendVerificationService {
@@ -13,7 +12,6 @@ export class UserResendVerificationService {
     private readonly userRepository: UserRepository,
     private readonly otpService: UserOtpService,
     private readonly mailerService: MailerService,
-    private readonly auditService: AuditService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(UserResendVerificationService.name);

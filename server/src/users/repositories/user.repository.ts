@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { type Prisma, type User, type UserStatus } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
+import { anonymizeIp } from '../utils/auth.utils';
 
 interface UserFilter {
   email?: string;
@@ -46,7 +47,9 @@ export class UserRepository {
       where: { id },
       data: {
         lastLoginAt: new Date(),
-        lastLoginIp: ip,
+        // Store an anonymized IP (data minimisation); analytics keeps a
+        // separate salted hash for its own purposes.
+        lastLoginIp: anonymizeIp(ip),
         lastUserAgent: userAgent,
       },
     });

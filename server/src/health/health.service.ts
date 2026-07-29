@@ -11,6 +11,22 @@ export class HealthService {
     private readonly redis: RedisService,
   ) {}
 
+  /**
+   * Liveness: the process is up and the event loop is responsive. Must NOT
+   * depend on external services, so a transient DB/Redis blip does not cause
+   * the orchestrator to kill an otherwise-healthy container.
+   */
+  live() {
+    return { status: 'ok' };
+  }
+
+  /**
+   * Readiness: the process can serve traffic (dependencies reachable).
+   */
+  async ready() {
+    return this.check();
+  }
+
   async check() {
     const [dbResult, redisResult] = await Promise.allSettled([
       this.checkDb(),
@@ -33,25 +49,42 @@ export class HealthService {
   }
 
   private async checkDb(): Promise<string> {
-    return Promise.race([
+    return this.withTimeout(
+      'db',
       this.prisma.$queryRaw`SELECT 1`.then(() => 'up'),
-      this.timeout('db'),
-    ]);
+    );
   }
 
   private async checkRedis(): Promise<string> {
-    return Promise.race([
+    return this.withTimeout(
+      'redis',
       this.redis.ping().then((pong) => (pong === 'PONG' ? 'up' : 'degraded')),
-      this.timeout('redis'),
-    ]);
+    );
   }
 
-  private timeout(service: string): Promise<never> {
-    return new Promise((_, reject) =>
-      setTimeout(
+  /**
+   * Race a probe against a timeout, always clearing the timer afterwards so we
+   * do not leak a pending 5s timeout on every health check.
+   */
+  private async withTimeout(
+    service: string,
+    probe: Promise<string>,
+  ): Promise<string> {
+    let timer: NodeJS.Timeout | undefined;
+
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
         () => reject(new Error(`${service} health check timed out`)),
         HEALTH_CHECK_TIMEOUT_MS,
-      ),
-    );
+      );
+    });
+
+    try {
+      return await Promise.race([probe, timeout]);
+    } finally {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    }
   }
 }

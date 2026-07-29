@@ -8,6 +8,7 @@ import {
   USER_ERROR_MESSAGES,
 } from '../constants/user.constants';
 import { SessionCleanupService } from '../use-cases/session-cleanup.service';
+import { shouldRunWorkers } from '../../common/service-role/service-role.util';
 
 @Injectable()
 export class SessionCleanupWorker implements OnModuleInit, OnModuleDestroy {
@@ -25,6 +26,11 @@ export class SessionCleanupWorker implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleInit(): void {
+    if (!shouldRunWorkers(this.config)) {
+      this.logger.info('Session cleanup worker disabled for this role (web)');
+      return;
+    }
+
     this.worker = new Worker(
       USER_CONSTANTS.SESSION_CLEANUP_QUEUE,
       async (job) => this.processJob(job),

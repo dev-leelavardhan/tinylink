@@ -17,7 +17,6 @@ import { UserResendVerificationService } from '../use-cases/user-resend-verifica
 import { UserChangePasswordService } from '../use-cases/user-change-password.service';
 import { UserForgotPasswordService } from '../use-cases/user-forgot-password.service';
 import { UserResetPasswordService } from '../use-cases/user-reset-password.service';
-import { SessionRepository } from '../repositories/session.repository';
 
 @Injectable()
 export class UsersService {
@@ -30,7 +29,6 @@ export class UsersService {
     private readonly changePasswordService: UserChangePasswordService,
     private readonly forgotPasswordService: UserForgotPasswordService,
     private readonly resetPasswordService: UserResetPasswordService,
-    private readonly sessionRepository: SessionRepository,
   ) {}
 
   register(dto: RegisterUserDto): Promise<{ message: string; email: string }> {

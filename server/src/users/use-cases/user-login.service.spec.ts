@@ -118,10 +118,6 @@ describe('UserLoginService', () => {
         tokenVersion: 0,
       };
       repository.findByEmail.mockResolvedValue(user);
-      repository.incrementTokenVersion.mockResolvedValue({
-        ...user,
-        tokenVersion: 1,
-      });
       sessionRepository.findActiveByUserId.mockResolvedValue([]);
       sessionRepository.create.mockResolvedValue({ id: 'session-1' });
 
@@ -136,7 +132,8 @@ describe('UserLoginService', () => {
         expiresIn: 900,
         tokenType: 'Bearer',
       });
-      expect(repository.incrementTokenVersion).toHaveBeenCalledWith('user-1');
+      // Login must NOT bump tokenVersion (that would log out other devices).
+      expect(repository.incrementTokenVersion).not.toHaveBeenCalled();
       expect(repository.updateLastLoginMetadata).toHaveBeenCalledWith(
         'user-1',
         ip,
@@ -192,6 +189,11 @@ describe('UserLoginService', () => {
       };
       repository.findByEmail.mockResolvedValue(user);
       bruteForceService.isLocked.mockResolvedValue(true);
+
+      // Credentials are now verified before account state is revealed, so the
+      // password must be valid for the lock to surface.
+      const argon2 = jest.requireMock<typeof import('argon2')>('argon2');
+      (argon2.verify as jest.Mock).mockResolvedValue(true);
 
       await expect(service.login(dto, ip, userAgent)).rejects.toThrow(
         ForbiddenException,
@@ -273,6 +275,7 @@ describe('UserLoginService', () => {
         aud: 'tinylink-api',
         jti: 'test-jti',
         sessionId: 'session-1',
+        type: 'refresh',
       };
       jwtService.verify.mockReturnValue(payload);
 
@@ -289,7 +292,6 @@ describe('UserLoginService', () => {
       });
       sessionRepository.rotateSession.mockResolvedValue({
         session: { id: 'session-2' },
-        newTokenVersion: 1,
       });
       sessionRepository.updateRefreshTokenHash.mockResolvedValue(undefined);
 
@@ -313,7 +315,6 @@ describe('UserLoginService', () => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           lastUsedAt: expect.any(Date),
         }),
-        'user-1',
       );
       expect(auditService.logRefreshTokenIssued).toHaveBeenCalledWith(
         'user-1',
@@ -340,6 +341,7 @@ describe('UserLoginService', () => {
         tokenVersion: 0,
         iss: 'tinylink',
         aud: 'tinylink-api',
+        type: 'refresh',
       };
       jwtService.verify.mockReturnValue(payload);
 
@@ -372,6 +374,7 @@ describe('UserLoginService', () => {
         tokenVersion: 0,
         iss: 'tinylink',
         aud: 'tinylink-api',
+        type: 'refresh',
       };
       jwtService.verify.mockReturnValue(payload);
 
@@ -399,6 +402,7 @@ describe('UserLoginService', () => {
         tokenVersion: 1,
         iss: 'tinylink',
         aud: 'tinylink-api',
+        type: 'refresh',
       };
       jwtService.verify.mockReturnValue(payload);
 
@@ -425,6 +429,7 @@ describe('UserLoginService', () => {
         tokenVersion: 0,
         iss: 'tinylink',
         aud: 'tinylink-api',
+        type: 'refresh',
       };
       jwtService.verify.mockReturnValue(payload);
 

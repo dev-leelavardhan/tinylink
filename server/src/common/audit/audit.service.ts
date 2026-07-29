@@ -47,7 +47,27 @@ export class AuditService {
     this.logger.setContext(AuditService.name);
   }
 
-  async log(params: AuditLogParams): Promise<void> {
+  log(params: AuditLogParams): Promise<void> {
+    // Detach the write from the caller's request path: audit logging must never
+    // add latency to (or fail) a hot auth flow. The write is invoked
+    // synchronously up to its first await, then runs to completion in the
+    // background. Errors are swallowed inside writeEntry.
+    void this.writeEntry(params);
+    return Promise.resolve();
+  }
+
+  /**
+   * Delete audit-log entries older than the given cutoff. Used by the retention
+   * job to bound table growth (and satisfy data-retention policies).
+   */
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    const result = await this.prisma.auditLog.deleteMany({
+      where: { createdAt: { lt: cutoff } },
+    });
+    return result.count;
+  }
+
+  private async writeEntry(params: AuditLogParams): Promise<void> {
     try {
       const metadata: Prisma.InputJsonValue | undefined = params.metadata
         ? (params.metadata as Prisma.InputJsonValue)

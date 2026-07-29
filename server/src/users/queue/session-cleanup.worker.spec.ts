@@ -28,6 +28,7 @@ describe('SessionCleanupWorker', () => {
 
   const configService = {
     getOrThrow: jest.fn().mockReturnValue('redis://localhost:6379'),
+    get: jest.fn().mockReturnValue('all'),
   };
 
   const logger = createLoggerMock();

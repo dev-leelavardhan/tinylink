@@ -27,6 +27,18 @@ import { UrlCacheService } from '../service/urls-cache.service';
 import { type CreateUrlResponseDto } from '../types';
 import { normalizeUrl } from '../utils/helpers';
 
+// Atomic anonymous rate-limit: INCR the counter and set the TTL only on the
+// first request in the window, in a single round-trip.
+const ANONYMOUS_RATE_LIMIT_SCRIPT = `
+local key = KEYS[1]
+local ttl = tonumber(ARGV[1])
+local count = redis.call('INCR', key)
+if count == 1 then
+  redis.call('EXPIRE', key, ttl)
+end
+return count
+`;
+
 const STRATEGY_MAP: Record<string, string> = {
   random: 'RANDOM',
   hash: 'HASH',
@@ -252,12 +264,15 @@ export class UrlCreateService {
 
   private async checkAndIncrementAnonymousRateLimit(ip: string): Promise<void> {
     const key = `${USER_CONSTANTS.RATE_LIMIT_KEY_PREFIX}${ip}`;
-    const count = await this.redis.incr(key);
 
-    // Only set TTL on first request in the window
-    if (count === 1) {
-      await this.redis.expire(key, USER_CONSTANTS.RATE_LIMIT_TTL_SECONDS);
-    }
+    // INCR + EXPIRE atomically so a crash between the two can never leave a
+    // key without a TTL (which would permanently lock out the IP).
+    const count = (await this.redis.eval(
+      ANONYMOUS_RATE_LIMIT_SCRIPT,
+      1,
+      key,
+      USER_CONSTANTS.RATE_LIMIT_TTL_SECONDS,
+    )) as number;
 
     if (count > USER_CONSTANTS.ANONYMOUS_URL_LIMIT) {
       throw new ForbiddenException(USER_ERROR_MESSAGES.FREE_LIMIT_REACHED);
