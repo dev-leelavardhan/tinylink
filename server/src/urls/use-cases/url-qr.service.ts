@@ -8,8 +8,7 @@ import { PinoLogger } from 'nestjs-pino';
 import QRCode from 'qrcode';
 
 import { QR_ERROR_MESSAGES, QR_LOG_MESSAGES } from '../constants/qr.constants';
-import { UrlRepository } from '../repositories/url.repository';
-import { UrlSlugRepository } from '../repositories/url-slug.repository';
+import { IdentifierRepository } from '../repositories/identifier.repository';
 
 export interface QrResult {
   buffer: Buffer;
@@ -19,8 +18,7 @@ export interface QrResult {
 @Injectable()
 export class UrlQrService {
   constructor(
-    private readonly urlRepository: UrlRepository,
-    private readonly urlSlugRepository: UrlSlugRepository,
+    private readonly identifierRepository: IdentifierRepository,
     private readonly config: ConfigService,
     private readonly logger: PinoLogger,
   ) {
@@ -28,23 +26,28 @@ export class UrlQrService {
   }
 
   async generate(
-    shortCode: string,
+    code: string,
     format: 'png' | 'svg',
     size: number,
   ): Promise<QrResult> {
     try {
-      const slug = await this.urlSlugRepository.findBySlug(shortCode);
-      const url = slug ? await this.urlRepository.findById(slug.urlId) : null;
+      const identifier =
+        await this.identifierRepository.findByIdentifierCode(code);
 
-      if (!url || url.deletedAt) {
+      if (
+        !identifier ||
+        identifier.deletedAt ||
+        identifier.disabled ||
+        (identifier.expiresAt && identifier.expiresAt <= new Date())
+      ) {
         throw new NotFoundException(QR_ERROR_MESSAGES.URL_NOT_FOUND);
       }
 
       const baseUrl = this.config.getOrThrow<string>('BASE_URL');
-      const fullShortUrl = `${baseUrl}/${url.shortCode}`;
+      const fullShortUrl = `${baseUrl}/${identifier.code}`;
 
       this.logger.info(
-        { shortCode: url.shortCode, format, size },
+        { code: identifier.code, format, size },
         QR_LOG_MESSAGES.QR_GENERATED,
       );
 
@@ -73,7 +76,7 @@ export class UrlQrService {
       }
 
       this.logger.error(
-        { err: error, shortCode },
+        { err: error, code },
         QR_ERROR_MESSAGES.GENERATION_FAILED,
       );
 

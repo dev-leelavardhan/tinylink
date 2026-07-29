@@ -2,15 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PinoLogger } from 'nestjs-pino';
 import { AnalyticsCleanupService } from './analytics-cleanup.service';
 import { AnalyticsRepository } from '../repositories/analytics.repository';
-import { UrlRepository } from '../../urls/repositories/url.repository';
 
 describe('AnalyticsCleanupService', () => {
   let service: AnalyticsCleanupService;
   let repository: {
     deleteOldAnalytics: jest.Mock;
-  };
-  let urlRepository: {
-    deleteExpiredUrls: jest.Mock;
   };
   let logger: {
     setContext: jest.Mock;
@@ -23,10 +19,6 @@ describe('AnalyticsCleanupService', () => {
       deleteOldAnalytics: jest.fn().mockResolvedValue(100),
     };
 
-    urlRepository = {
-      deleteExpiredUrls: jest.fn().mockResolvedValue({ count: 5 }),
-    };
-
     logger = {
       setContext: jest.fn(),
       info: jest.fn(),
@@ -37,7 +29,6 @@ describe('AnalyticsCleanupService', () => {
       providers: [
         AnalyticsCleanupService,
         { provide: AnalyticsRepository, useValue: repository },
-        { provide: UrlRepository, useValue: urlRepository },
         { provide: PinoLogger, useValue: logger },
       ],
     }).compile();
@@ -46,10 +37,9 @@ describe('AnalyticsCleanupService', () => {
   });
 
   describe('cleanup', () => {
-    it('deletes expired URLs and old analytics', async () => {
+    it('deletes old analytics', async () => {
       await service.cleanup();
 
-      expect(urlRepository.deleteExpiredUrls).toHaveBeenCalled();
       expect(repository.deleteOldAnalytics).toHaveBeenCalledWith(
         expect.any(Date),
       );
@@ -60,10 +50,6 @@ describe('AnalyticsCleanupService', () => {
 
       expect(logger.info).toHaveBeenCalledWith('Starting analytics cleanup');
       expect(logger.info).toHaveBeenCalledWith(
-        { deletedCount: 5 },
-        'Expired URLs deleted',
-      );
-      expect(logger.info).toHaveBeenCalledWith(
         expect.objectContaining({ deletedCount: 100 }),
         'Old analytics deleted',
       );
@@ -72,7 +58,7 @@ describe('AnalyticsCleanupService', () => {
 
     it('logs and throws on error', async () => {
       const error = new Error('Database error');
-      urlRepository.deleteExpiredUrls.mockRejectedValue(error);
+      repository.deleteOldAnalytics.mockRejectedValue(error);
 
       await expect(service.cleanup()).rejects.toThrow('Database error');
 

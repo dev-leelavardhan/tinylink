@@ -132,12 +132,24 @@ export class UserLoginService {
       ? parseUserAgent(userAgent)
       : { browser: null, os: null };
 
+    // Enforce max sessions per user — revoke oldest if at limit
+    const activeSessions = await this.sessionRepository.findActiveByUserId(
+      user.id,
+    );
+    if (activeSessions.length >= USER_CONSTANTS.MAX_SESSIONS_PER_USER) {
+      const oldest = activeSessions[activeSessions.length - 1];
+      await this.sessionRepository.revoke(oldest.id);
+    }
+
     const expiresAt = daysFromNow(USER_CONSTANTS.SESSION_EXPIRY_DAYS);
 
-    // Create session first to get the sessionId for JWT binding
+    // Use a random placeholder hash — safe because it's unguessable
+    // and will be replaced atomically after token generation.
+    const placeholderHash = hashRefreshToken(randomUUID());
+
     const session = await this.sessionRepository.create({
       user: { connect: { id: user.id } },
-      refreshTokenHash: 'pending',
+      refreshTokenHash: placeholderHash,
       browser,
       operatingSystem: os,
       ipAddress: ip,
@@ -306,7 +318,11 @@ export class UserLoginService {
         );
 
       // Generate tokens with the atomically incremented tokenVersion
-      const newTokens = await this.generateTokens(user.id, newTokenVersion);
+      const newTokens = await this.generateTokens(
+        user.id,
+        newTokenVersion,
+        newSession.id,
+      );
 
       // Update the session with the real refresh token hash
       const newRefreshTokenHash = hashRefreshToken(newTokens.refreshToken);
@@ -350,6 +366,14 @@ export class UserLoginService {
     ip: string | undefined,
     userAgent: string | undefined,
   ): Promise<void> {
+    const session = await this.sessionRepository.findById(sessionId);
+
+    if (!session || session.userId !== userId) {
+      throw new UnauthorizedException(
+        USER_ERROR_MESSAGES.INVALID_REFRESH_TOKEN,
+      );
+    }
+
     await this.sessionRepository.revoke(sessionId);
 
     await this.auditService.log({
@@ -453,14 +477,20 @@ export class UserLoginService {
     };
 
     const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
-        secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
-        expiresIn: USER_CONSTANTS.ACCESS_TOKEN_EXPIRY,
-      }),
-      this.jwtService.signAsync(payload, {
-        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-        expiresIn: USER_CONSTANTS.REFRESH_TOKEN_EXPIRY,
-      }),
+      this.jwtService.signAsync(
+        { ...payload, type: 'access' as const },
+        {
+          secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+          expiresIn: USER_CONSTANTS.ACCESS_TOKEN_EXPIRY,
+        },
+      ),
+      this.jwtService.signAsync(
+        { ...payload, type: 'refresh' as const },
+        {
+          secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+          expiresIn: USER_CONSTANTS.REFRESH_TOKEN_EXPIRY,
+        },
+      ),
     ]);
 
     return { accessToken, refreshToken };

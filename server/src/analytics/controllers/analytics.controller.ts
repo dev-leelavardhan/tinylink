@@ -26,8 +26,15 @@ export class AnalyticsController {
     query: AnalyticsQueryDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    await this.analyticsService.verifyOwnership(urlId, user.userId);
-    return this.analyticsService.getAggregated(urlId, query.days);
+    const identifierIds = await this.analyticsService.verifyOwnership(
+      urlId,
+      user.userId,
+    );
+    return this.analyticsService.getAggregated(
+      urlId,
+      query.days,
+      identifierIds,
+    );
   }
 
   @Get('clicks')
@@ -37,11 +44,15 @@ export class AnalyticsController {
     query: PaginationQueryDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    await this.analyticsService.verifyOwnership(urlId, user.userId);
+    const identifierIds = await this.analyticsService.verifyOwnership(
+      urlId,
+      user.userId,
+    );
     return this.analyticsService.getRecentClicks(
       urlId,
       query.page,
       query.limit,
+      identifierIds,
     );
   }
 }

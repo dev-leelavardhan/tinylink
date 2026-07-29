@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,6 +8,10 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ============================================================================
+// Enums
+// ============================================================================
 
 enum UserStatus {
   ACTIVE
@@ -19,146 +21,22 @@ enum UserStatus {
   LOCKED
 }
 
-model User {
-  id                  String     @id @default(cuid())
-  email               String     @unique
-  passwordHash        String
-  emailVerified       Boolean    @default(false)
-  status              UserStatus @default(ACTIVE)
-  tokenVersion        Int        @default(0)
-  failedLoginAttempts Int        @default(0)
-  lockUntil           DateTime?
-  lastLoginAt         DateTime?
-  lastLoginIp         String?
-  lastUserAgent       String?
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
-
-  urls             Url[]
-  verificationOtps VerificationOtp[]
-  auditLogs        AuditLog[]
-  sessions         Session[]
+enum IdentifierKind {
+  GENERATED
+  CUSTOM_ALIAS
 }
 
-model Session {
-  id               String    @id @default(cuid())
-  userId           String
-  refreshTokenHash String
-  refreshTokenId   String?   @unique
-  deviceName       String?
-  browser          String?
-  operatingSystem  String?
-  ipAddress        String?
-  userAgent        String?
-  createdAt        DateTime  @default(now())
-  expiresAt        DateTime
-  lastUsedAt       DateTime  @default(now())
-  revokedAt        DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([refreshTokenHash])
-  @@index([expiresAt])
-}
-
-model Url {
-  id String @id @default(cuid())
-
-  originalUrl String
-
-  shortCode String @unique
-
-  customAlias String? @unique
-
-  strategy String
-
-  expiresAt DateTime?
-
-  disabled Boolean @default(false)
-
-  userId String?
-
-  analytics Analytics[]
-
-  lastAccessedAt DateTime?
-
-  deletedAt DateTime?
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-  slugs UrlSlug[]
-
-  @@unique([originalUrl, strategy])
-  @@index([expiresAt])
-  @@index([disabled])
-  @@index([userId])
-}
-
-model UrlSlug {
-  id    String @id @default(cuid())
-  slug  String @unique
-  urlId String
-
-  url Url @relation(fields: [urlId], references: [id], onDelete: Cascade)
-
-  @@index([urlId])
-}
-
-model Analytics {
-  id    String @id @default(cuid())
-  urlId String
-  url   Url    @relation(fields: [urlId], references: [id], onDelete: Cascade)
-
-  timestamp DateTime @default(now())
-
-  // Parsed from User-Agent
-  browser String? // e.g. "Chrome", "Firefox"
-  os      String? // e.g. "Windows", "macOS", "Linux"
-  device  String? // e.g. "Desktop", "Mobile", "Tablet"
-
-  // GeoIP
-  country String? // ISO 3166-1 alpha-2 code, e.g. "US"
-  city    String? // optional, from GeoLite2
-
-  // Privacy: hash IP with salt, never store raw
-  ipHash String
-
-  // Referrer (normalized)
-  referrer String?
-
-  @@index([timestamp])
-  @@index([urlId, timestamp])
-  @@index([urlId, browser])
-  @@index([urlId, country])
+enum IdentifierStrategy {
+  RANDOM
+  HASH
+  SNOWFLAKE
+  SEQUENTIAL
+  MANUAL
 }
 
 enum VerificationType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
-}
-
-model VerificationOtp {
-  id          String           @id @default(cuid())
-  userId      String
-  email       String
-  type        VerificationType @default(EMAIL_VERIFICATION)
-  otpHash     String
-  salt        String           @default("")
-  expiresAt   DateTime
-  usedAt      DateTime?
-  attempts    Int              @default(0)
-  resendCount Int              @default(0)
-  createdAt   DateTime         @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([email, expiresAt])
-  @@index([userId, type])
 }
 
 enum AuditEvent {
@@ -187,6 +65,144 @@ enum AuditEvent {
   PASSWORD_RESET_REQUESTED
   PASSWORD_RESET_COMPLETED
   PASSWORD_RESET_FAILED
+}
+
+// ============================================================================
+// Models
+// ============================================================================
+
+model User {
+  id                  String     @id @default(cuid())
+  email               String     @unique
+  passwordHash        String
+  emailVerified       Boolean    @default(false)
+  status              UserStatus @default(ACTIVE)
+  tokenVersion        Int        @default(0)
+  failedLoginAttempts Int        @default(0)
+  lockUntil           DateTime?
+  lastLoginAt         DateTime?
+  lastLoginIp         String?
+  lastUserAgent       String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  identifiers     Identifier[]
+  verificationOtps VerificationOtp[]
+  auditLogs       AuditLog[]
+  sessions        Session[]
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String
+  refreshTokenHash String
+  refreshTokenId   String?   @unique
+  deviceName       String?
+  browser          String?
+  operatingSystem  String?
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime
+  lastUsedAt       DateTime  @default(now())
+  revokedAt        DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshTokenHash])
+  @@index([expiresAt])
+}
+
+model Url {
+  id            String   @id @default(cuid())
+  originalUrl   String   // preserves full URL as provided by user
+  normalizedUrl String   @unique // dedup key (stripped of trailing slash, params, etc.)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  identifiers Identifier[]
+  analytics   Analytics[]
+}
+
+model Identifier {
+  id       String             @id @default(cuid())
+  code     String             @unique
+  kind     IdentifierKind
+  strategy IdentifierStrategy? // which generator created this code
+
+  urlId   String
+  ownerId String? // NULL = guest, UUID = user-owned
+
+  expiresAt DateTime?
+  disabled  Boolean  @default(false)
+  deletedAt DateTime? // soft delete
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  url       Url        @relation(fields: [urlId], references: [id], onDelete: Cascade)
+  owner     User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  analytics Analytics[]
+
+  @@index([urlId])
+  @@index([ownerId])
+  @@index([ownerId, kind, urlId])
+  @@index([expiresAt])
+  @@index([deletedAt])
+}
+
+model Analytics {
+  id           String @id @default(cuid())
+  identifierId String // primary: per-link tracking
+  urlId        String // denormalized: fast aggregate queries
+
+  timestamp DateTime @default(now())
+
+  // Parsed from User-Agent
+  browser String? // e.g. "Chrome", "Firefox"
+  os      String? // e.g. "Windows", "macOS", "Linux"
+  device  String? // e.g. "Desktop", "Mobile", "Tablet"
+
+  // GeoIP
+  country String? // ISO 3166-1 alpha-2 code, e.g. "US"
+  city    String? // optional, from GeoLite2
+
+  // Privacy: hash IP with salt, never store raw
+  ipHash String
+
+  // Referrer (normalized)
+  referrer String?
+
+  identifier Identifier @relation(fields: [identifierId], references: [id], onDelete: Cascade)
+  url        Url        @relation(fields: [urlId], references: [id], onDelete: Cascade)
+
+  @@index([identifierId])
+  @@index([urlId])
+  @@index([timestamp])
+  @@index([urlId, timestamp])
+  @@index([urlId, browser])
+  @@index([urlId, country])
+}
+
+model VerificationOtp {
+  id          String           @id @default(cuid())
+  userId      String
+  email       String
+  type        VerificationType @default(EMAIL_VERIFICATION)
+  otpHash     String
+  salt        String           @default("")
+  expiresAt   DateTime
+  usedAt      DateTime?
+  attempts    Int              @default(0)
+  resendCount Int              @default(0)
+  createdAt   DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([email, expiresAt])
+  @@index([userId, type])
 }
 
 model AuditLog {

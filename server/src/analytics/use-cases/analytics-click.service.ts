@@ -6,7 +6,6 @@ import { PinoLogger } from 'nestjs-pino';
 import { access } from 'node:fs/promises';
 
 import { AnalyticsRepository } from '../repositories/analytics.repository';
-import { UrlRepository } from '../../urls/repositories/url.repository';
 import { type ClickJobData } from '../types';
 import { hashIp, normalizeReferrer, parseUserAgent } from '../utils/helpers';
 
@@ -19,7 +18,6 @@ export class AnalyticsClickService implements OnModuleInit {
 
   constructor(
     private readonly repository: AnalyticsRepository,
-    private readonly urlRepository: UrlRepository,
     private readonly config: ConfigService,
     private readonly logger: PinoLogger,
   ) {
@@ -47,7 +45,7 @@ export class AnalyticsClickService implements OnModuleInit {
   }
 
   async processClick(data: ClickJobData): Promise<void> {
-    const { urlId, userAgent, referrer, ip } = data;
+    const { urlId, identifierId, userAgent, referrer, ip } = data;
 
     const { browser, os, device } = parseUserAgent(userAgent);
     const ipHash = hashIp(ip, this.ipSalt);
@@ -56,6 +54,7 @@ export class AnalyticsClickService implements OnModuleInit {
     try {
       await this.repository.create({
         url: { connect: { id: urlId } },
+        identifier: { connect: { id: identifierId } },
         browser,
         os,
         device,
@@ -63,13 +62,11 @@ export class AnalyticsClickService implements OnModuleInit {
         ipHash,
         referrer: normalizeReferrer(referrer),
       });
-
-      await this.urlRepository.updateLastAccessedAt(urlId);
     } catch (err: unknown) {
       if (err instanceof Error && 'code' in err && err.code === 'P2025') {
         this.logger.warn(
-          { urlId },
-          'URL not found, skipping analytics recording',
+          { urlId, identifierId },
+          'URL or Identifier not found, skipping analytics recording',
         );
         return;
       }
@@ -87,7 +84,7 @@ export class AnalyticsClickService implements OnModuleInit {
 
       return result?.country?.iso_code ?? null;
     } catch (err: unknown) {
-      this.logger.warn({ err, ip }, 'Failed to resolve country');
+      this.logger.warn({ err }, 'Failed to resolve country from GeoIP');
       return null;
     }
   }

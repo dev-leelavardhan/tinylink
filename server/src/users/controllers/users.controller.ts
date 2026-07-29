@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { type Request } from 'express';
 
 import { ZodValidationPipe } from '../../common/zod/common.validation';
@@ -16,6 +17,7 @@ import { UsersService } from '../service/users.service';
 import { getClientIp } from '../utils/auth.utils';
 
 @Controller('users')
+@UseGuards(ThrottlerGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -29,6 +31,7 @@ export class UsersController {
 
   @Post('change-password')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   async changePassword(
     @CurrentUser() user: AuthenticatedUser,
     @Req() req: Request,

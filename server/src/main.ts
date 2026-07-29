@@ -8,8 +8,17 @@ import { Logger } from 'nestjs-pino';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { applyMiddleware } from './common/bootstrap/apply-middleware';
 
+const REQUEST_TIMEOUT_MS = 30_000;
+
 async function bootstrap() {
   const expressApp = express();
+
+  // Request timeout (Slowloris protection)
+  expressApp.use((req, res, next) => {
+    req.setTimeout(REQUEST_TIMEOUT_MS);
+    res.setTimeout(REQUEST_TIMEOUT_MS);
+    next();
+  });
 
   applyMiddleware(expressApp);
 
@@ -24,6 +33,7 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigin ? corsOrigin.split(',').map((o) => o.trim()) : false,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: 'Content-Type,Authorization,X-Request-Id',
     credentials: !!corsOrigin,
   });
 

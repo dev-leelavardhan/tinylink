@@ -137,11 +137,16 @@ export class BruteForceService {
 
       return true;
     } catch (err: unknown) {
+      // Fail-closed in production (deny), fail-open otherwise (allow)
+      // Fail-closed in production (deny), fail-open otherwise (allow)
+      const isProduction = process.env.NODE_ENV === 'production';
       this.logger.warn(
         { err, email },
-        'Failed to check account rate limit (Redis unavailable)',
+        isProduction
+          ? 'Failed to check account rate limit (Redis unavailable) — denying request'
+          : 'Failed to check account rate limit (Redis unavailable) — allowing request',
       );
-      return true;
+      return !isProduction;
     }
   }
 }

@@ -219,7 +219,18 @@ describe('BruteForceService', () => {
       expect(result).toBe(false);
     });
 
-    it('should handle Redis failure gracefully', async () => {
+    it('should deny request in production when Redis is unavailable (fail-closed)', async () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+      redisMultiChain.exec.mockRejectedValue(new Error('Redis unavailable'));
+
+      const result = await service.checkAccountRateLimit('test@example.com');
+
+      expect(result).toBe(false);
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it('should allow request in non-production when Redis is unavailable (fail-open)', async () => {
       redisMultiChain.exec.mockRejectedValue(new Error('Redis unavailable'));
 
       const result = await service.checkAccountRateLimit('test@example.com');

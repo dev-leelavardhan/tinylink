@@ -10,10 +10,13 @@ export type PrismaMock = {
     create: jest.Mock;
     updateMany: jest.Mock;
   };
-  urlSlug: {
+  identifier: {
     findUnique: jest.Mock;
+    findFirst: jest.Mock;
     count: jest.Mock;
+    create: jest.Mock;
     createMany: jest.Mock;
+    update: jest.Mock;
     deleteMany: jest.Mock;
   };
   $transaction: jest.Mock;
@@ -33,10 +36,13 @@ export function createPrismaMock(): PrismaMock {
       create: jest.fn(),
       updateMany: jest.fn(),
     },
-    urlSlug: {
+    identifier: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       count: jest.fn(),
+      create: jest.fn(),
       createMany: jest.fn(),
+      update: jest.fn(),
       deleteMany: jest.fn(),
     },
     $transaction: jest.fn(),

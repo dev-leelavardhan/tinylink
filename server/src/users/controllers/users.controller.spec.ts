@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ThrottlerModule } from '@nestjs/throttler';
 import type { Request } from 'express';
 
 import { UsersController } from './users.controller';
@@ -28,6 +29,7 @@ describe('UsersController', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
+      imports: [ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }])],
       controllers: [UsersController],
       providers: [{ provide: UsersService, useValue: usersService }],
     }).compile();

@@ -49,7 +49,7 @@ describe('UrlsService (integration)', () => {
     await moduleRef.close();
   });
 
-  it('persists and reuses URLs for the same original URL and strategy', async () => {
+  it('persists and reuses URLs for the same original URL', async () => {
     const dto = { originalUrl: 'https://integration.example/one' };
 
     const created = await urlsService.create(dto);

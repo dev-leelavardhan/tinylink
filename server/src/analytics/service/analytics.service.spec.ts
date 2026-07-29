@@ -12,7 +12,7 @@ describe('AnalyticsService', () => {
 
   beforeEach(async () => {
     readService = {
-      verifyOwnership: jest.fn().mockResolvedValue(undefined),
+      verifyOwnership: jest.fn().mockResolvedValue(['id-1']),
       getAggregated: jest.fn(),
       getRecentClicks: jest.fn(),
     };
@@ -51,7 +51,11 @@ describe('AnalyticsService', () => {
 
       const result = await service.getAggregated('url-id', 30);
 
-      expect(readService.getAggregated).toHaveBeenCalledWith('url-id', 30);
+      expect(readService.getAggregated).toHaveBeenCalledWith(
+        'url-id',
+        30,
+        undefined,
+      );
       expect(result).toEqual(expected);
     });
   });
@@ -63,7 +67,12 @@ describe('AnalyticsService', () => {
 
       const result = await service.getRecentClicks('url-id', 1, 10);
 
-      expect(readService.getRecentClicks).toHaveBeenCalledWith('url-id', 1, 10);
+      expect(readService.getRecentClicks).toHaveBeenCalledWith(
+        'url-id',
+        1,
+        10,
+        undefined,
+      );
       expect(result).toEqual(expected);
     });
   });

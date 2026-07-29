@@ -9,11 +9,11 @@ import {
   ALIAS_REGEX,
   RESERVED_ALIASES,
 } from '../constants/alias.constants';
-import { UrlSlugRepository } from '../repositories/url-slug.repository';
+import { IdentifierRepository } from '../repositories/identifier.repository';
 
 @Injectable()
 export class AliasValidatorService {
-  constructor(private readonly slugRepository: UrlSlugRepository) {}
+  constructor(private readonly identifierRepository: IdentifierRepository) {}
 
   async validate(alias: string): Promise<string> {
     const normalized = alias.trim().toLowerCase();
@@ -34,7 +34,7 @@ export class AliasValidatorService {
       throw new BadRequestException('Reserved alias');
     }
 
-    const exists = await this.slugRepository.existsBySlug(normalized);
+    const exists = await this.identifierRepository.existsByCode(normalized);
 
     if (exists) {
       throw new ConflictException('Alias already exists');

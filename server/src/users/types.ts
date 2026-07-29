@@ -10,4 +10,5 @@ export interface JwtPayload {
   aud: string;
   jti: string;
   sessionId?: string;
+  type?: 'access' | 'refresh';
 }

@@ -59,10 +59,10 @@ describe('Redis Cache (e2e)', () => {
 
       const cached = JSON.parse(afterCreate!) as {
         originalUrl: string;
-        shortCode: string;
+        code: string;
       };
       expect(cached.originalUrl).toBe('https://cache-test.example.com');
-      expect(cached.shortCode).toBe(body.shortCode);
+      expect(cached.code).toBe(body.shortCode);
     });
 
     it('serves redirects from Redis cache', async () => {

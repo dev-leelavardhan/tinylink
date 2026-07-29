@@ -7,6 +7,7 @@ import {
 export const createUrlSchema = z.object({
   originalUrl: z
     .url()
+    .max(2048, 'URL must be at most 2048 characters')
     .refine(
       (url) => url.startsWith('http://') || url.startsWith('https://'),
       'URL must use HTTP or HTTPS',

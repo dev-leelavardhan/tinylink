@@ -21,7 +21,7 @@ export class QrController {
 
   @Get(':shortCode/qr')
   @UseGuards(JwtAuthOptionalGuard)
-  @Header('Cache-Control', 'public, max-age=31536000, immutable')
+  @Header('Cache-Control', 'public, max-age=86400')
   async getQrCode(
     @Param('shortCode') shortCode: string,
     @Query(new ZodValidationPipe(qrQuerySchema)) query: QrQueryDto,

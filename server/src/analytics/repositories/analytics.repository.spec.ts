@@ -43,6 +43,7 @@ describe('AnalyticsRepository', () => {
     it('creates an analytics record', async () => {
       const data = {
         url: { connect: { id: 'url-id' } },
+        identifier: { connect: { id: 'id-1' } },
         browser: 'Chrome',
         os: 'Windows',
         device: 'Desktop',

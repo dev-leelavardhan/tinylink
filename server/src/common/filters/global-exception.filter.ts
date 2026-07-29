@@ -8,6 +8,8 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
+const SECURITY_4XX_EVENTS = new Set([401, 403, 429]);
+
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
@@ -31,7 +33,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         exceptionResponse !== null
       ) {
         const responseObj = exceptionResponse as Record<string, unknown>;
-        message = (responseObj.message as string) || message;
+        const raw = responseObj.message;
+        message =
+          typeof raw === 'string'
+            ? raw
+            : Array.isArray(raw)
+              ? (raw as string[]).join(', ')
+              : message;
       }
     }
 
@@ -53,11 +61,29 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       );
     }
 
+    // Log security-relevant 4xx events (auth failures, rate limiting)
+    if (SECURITY_4XX_EVENTS.has(status)) {
+      this.logger.warn(
+        {
+          path: request.url,
+          method: request.method,
+          statusCode: status,
+          ip: request.ip,
+        },
+        'Security event',
+      );
+    }
+
+    const requestId = request.headers
+      ? ((request.headers['x-request-id'] as string) ?? undefined)
+      : undefined;
+
     response.status(status).json({
       statusCode: status,
       message,
       timestamp: new Date().toISOString(),
       path: request.url,
+      ...(requestId ? { requestId } : {}),
     });
   }
 }

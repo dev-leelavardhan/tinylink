@@ -27,18 +27,18 @@ export async function flushAnalyticsQueue(redisUrl: string): Promise<void> {
 }
 
 export async function cleanDatabase(prisma: PrismaService): Promise<void> {
-  // Truncate tables individually to avoid deadlocks
-  await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "Analytics" RESTART IDENTITY CASCADE',
-  );
-  await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "VerificationOtp" RESTART IDENTITY CASCADE',
-  );
-  await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "User" RESTART IDENTITY CASCADE',
-  );
-  await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "Url" RESTART IDENTITY CASCADE',
-  );
+  // Truncate all tables in a single statement to avoid deadlocks.
+  // CASCADE handles FK dependencies automatically.
+  await prisma.$executeRawUnsafe(`
+    TRUNCATE TABLE
+      "Analytics",
+      "Identifier",
+      "VerificationOtp",
+      "AuditLog",
+      "Session",
+      "Url",
+      "User"
+    RESTART IDENTITY CASCADE
+  `);
   await resetShortCodeCounter(prisma);
 }

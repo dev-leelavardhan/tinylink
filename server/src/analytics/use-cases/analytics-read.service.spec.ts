@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ForbiddenException } from '@nestjs/common';
 import { AnalyticsReadService } from './analytics-read.service';
 import { AnalyticsRepository } from '../repositories/analytics.repository';
-import { UrlRepository } from '../../urls/repositories/url.repository';
+import { IdentifierRepository } from '../../urls/repositories/identifier.repository';
 import { AnalyticsMapper } from '../mappers/analytics.mapper';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -16,8 +16,9 @@ describe('AnalyticsReadService', () => {
     groupByDay: jest.Mock;
     findRecentClicks: jest.Mock;
   };
-  let urlRepository: {
-    findById: jest.Mock;
+  let identifierRepository: {
+    findByUrlAndOwner: jest.Mock;
+    findAllByUrlAndOwner: jest.Mock;
   };
   let mapper: {
     toAggregatedResponse: jest.Mock;
@@ -34,8 +35,9 @@ describe('AnalyticsReadService', () => {
       findRecentClicks: jest.fn(),
     };
 
-    urlRepository = {
-      findById: jest.fn(),
+    identifierRepository = {
+      findByUrlAndOwner: jest.fn(),
+      findAllByUrlAndOwner: jest.fn(),
     };
 
     mapper = {
@@ -47,7 +49,7 @@ describe('AnalyticsReadService', () => {
       providers: [
         AnalyticsReadService,
         { provide: AnalyticsRepository, useValue: repository },
-        { provide: UrlRepository, useValue: urlRepository },
+        { provide: IdentifierRepository, useValue: identifierRepository },
         { provide: AnalyticsMapper, useValue: mapper },
         {
           provide: PinoLogger,
@@ -60,30 +62,24 @@ describe('AnalyticsReadService', () => {
   });
 
   describe('verifyOwnership', () => {
-    it('should pass when user owns the URL', async () => {
-      urlRepository.findById.mockResolvedValue({
-        id: 'url-1',
-        userId: 'user-1',
+    it('should return identifier IDs when user owns an identifier for the URL', async () => {
+      identifierRepository.findByUrlAndOwner.mockResolvedValue({
+        id: 'id-1',
+        urlId: 'url-1',
+        ownerId: 'user-1',
       });
+      identifierRepository.findAllByUrlAndOwner.mockResolvedValue([
+        { id: 'id-1' },
+        { id: 'id-2' },
+      ]);
 
-      await expect(
-        service.verifyOwnership('url-1', 'user-1'),
-      ).resolves.not.toThrow();
+      const result = await service.verifyOwnership('url-1', 'user-1');
+
+      expect(result).toEqual(['id-1', 'id-2']);
     });
 
-    it('should throw when URL not found', async () => {
-      urlRepository.findById.mockResolvedValue(null);
-
-      await expect(service.verifyOwnership('url-1', 'user-1')).rejects.toThrow(
-        ForbiddenException,
-      );
-    });
-
-    it('should throw when user does not own URL', async () => {
-      urlRepository.findById.mockResolvedValue({
-        id: 'url-1',
-        userId: 'user-2',
-      });
+    it('should throw when user has no identifier for the URL', async () => {
+      identifierRepository.findByUrlAndOwner.mockResolvedValue(null);
 
       await expect(service.verifyOwnership('url-1', 'user-1')).rejects.toThrow(
         ForbiddenException,
@@ -124,22 +120,27 @@ describe('AnalyticsReadService', () => {
       expect(repository.countByFilter).toHaveBeenCalledWith({
         urlId,
         since: expect.any(Date) as Date,
+        identifierIds: undefined,
       });
       expect(repository.groupByBrowser).toHaveBeenCalledWith(
         urlId,
         expect.any(Date) as Date,
+        undefined,
       );
       expect(repository.groupByCountry).toHaveBeenCalledWith(
         urlId,
         expect.any(Date) as Date,
+        undefined,
       );
       expect(repository.groupByDevice).toHaveBeenCalledWith(
         urlId,
         expect.any(Date) as Date,
+        undefined,
       );
       expect(repository.groupByDay).toHaveBeenCalledWith(
         urlId,
         expect.any(Date) as Date,
+        undefined,
       );
       expect(mapper.toAggregatedResponse).toHaveBeenCalled();
       expect(result).toEqual(expectedResponse);
@@ -179,10 +180,16 @@ describe('AnalyticsReadService', () => {
 
       const result = await service.getRecentClicks(urlId, page, limit);
 
-      expect(repository.findRecentClicks).toHaveBeenCalledWith(urlId, 10, 10);
+      expect(repository.findRecentClicks).toHaveBeenCalledWith(
+        urlId,
+        10,
+        10,
+        undefined,
+      );
       expect(repository.countByFilter).toHaveBeenCalledWith({
         urlId,
         since: expect.any(Date) as Date,
+        identifierIds: undefined,
       });
       expect(result).toEqual({
         clicks: [mappedClick],
@@ -209,7 +216,12 @@ describe('AnalyticsReadService', () => {
 
       await service.getRecentClicks('url-id', 1, 10);
 
-      expect(repository.findRecentClicks).toHaveBeenCalledWith('url-id', 0, 10);
+      expect(repository.findRecentClicks).toHaveBeenCalledWith(
+        'url-id',
+        0,
+        10,
+        undefined,
+      );
     });
   });
 });

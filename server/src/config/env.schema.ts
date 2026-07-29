@@ -50,6 +50,7 @@ export const envSchema = z
     MAILER_USER: z.string().min(1, 'MAILER_USER is required'),
     MAILER_PASS: z.string().min(1, 'MAILER_PASS is required'),
     MAILER_FROM: z.string().email('MAILER_FROM must be a valid email'),
+    MAILER_NAME: z.string().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.SHORT_CODE_STRATEGY === 'hashids' && !env.SHORT_CODE_HASHIDS_SALT) {

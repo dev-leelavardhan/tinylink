@@ -5,6 +5,7 @@ import request from 'supertest';
 import { createTestApp } from './helpers/create-test-app';
 import { cleanDatabase } from './helpers/database.helper';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { RedisService } from '../src/redis/service/redis.service';
 
 function getCookies(res: request.Response): string[] {
   const header = res.headers['set-cookie'];
@@ -19,15 +20,24 @@ function findRefreshCookie(res: request.Response): string | undefined {
 describe('Auth Flow (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let redis: RedisService;
 
   beforeAll(async () => {
     app = await createTestApp();
     prisma = app.get(PrismaService);
+    redis = app.get(RedisService);
     await prisma.onModuleInit();
   });
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
+    // Clean Redis rate limit and brute force keys
+    const keys = await redis.keys('auth:*');
+    const otpKeys = await redis.keys('otp:*');
+    const allKeys = [...keys, ...otpKeys];
+    if (allKeys.length > 0) {
+      await redis.del(...allKeys);
+    }
   });
 
   afterAll(async () => {

@@ -5,15 +5,25 @@ import { AnalyticsReadService } from '../use-cases/analytics-read.service';
 export class AnalyticsService {
   constructor(private readonly analyticsReadService: AnalyticsReadService) {}
 
-  verifyOwnership(urlId: string, userId: string): Promise<void> {
+  verifyOwnership(urlId: string, userId: string): Promise<string[]> {
     return this.analyticsReadService.verifyOwnership(urlId, userId);
   }
 
-  getAggregated(urlId: string, days: number) {
-    return this.analyticsReadService.getAggregated(urlId, days);
+  getAggregated(urlId: string, days: number, identifierIds?: string[]) {
+    return this.analyticsReadService.getAggregated(urlId, days, identifierIds);
   }
 
-  getRecentClicks(urlId: string, page: number, limit: number) {
-    return this.analyticsReadService.getRecentClicks(urlId, page, limit);
+  getRecentClicks(
+    urlId: string,
+    page: number,
+    limit: number,
+    identifierIds?: string[],
+  ) {
+    return this.analyticsReadService.getRecentClicks(
+      urlId,
+      page,
+      limit,
+      identifierIds,
+    );
   }
 }

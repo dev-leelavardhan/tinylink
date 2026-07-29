@@ -129,7 +129,7 @@ describe('auth.utils', () => {
         'test-token',
         expect.objectContaining({
           httpOnly: true,
-          sameSite: 'lax',
+          sameSite: 'strict',
           path: '/auth',
           maxAge: 3600000,
         }),
@@ -151,7 +151,7 @@ describe('auth.utils', () => {
         '',
         expect.objectContaining({
           httpOnly: true,
-          sameSite: 'lax',
+          sameSite: 'strict',
           path: '/auth',
           maxAge: 0,
         }),

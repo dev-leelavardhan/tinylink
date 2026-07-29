@@ -35,6 +35,14 @@ export class UserResendVerificationService {
       return;
     }
 
+    if (user.status === 'DISABLED' || user.status === 'SUSPENDED') {
+      this.logger.info(
+        { userId: user.id },
+        'Resend verification rejected for inactive account',
+      );
+      return;
+    }
+
     // Invalidate old OTPs and generate new one
     const otp = await this.otpService.resend(user.id, user.email);
 

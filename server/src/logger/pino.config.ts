@@ -27,7 +27,15 @@ export const pinoConfig: Params = {
         : undefined,
 
     redact: {
-      paths: ['req.headers.authorization', 'req.headers.cookie'],
+      paths: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'req.body.password',
+        'req.body.newPassword',
+        'req.body.currentPassword',
+        'req.body.otp',
+        'req.body.refreshToken',
+      ],
       remove: true,
     },
   },

@@ -5,7 +5,7 @@ import {
   CACHE_CONSTANTS,
   CACHE_LOG_MESSAGES,
 } from '../constants/cache.constants';
-import { CachedUrl, CacheResult } from '../types';
+import { CachedIdentifier, CacheResult } from '../types';
 
 @Injectable()
 export class CacheService {
@@ -43,7 +43,7 @@ export class CacheService {
       }
 
       this.logger.debug({ shortCode }, CACHE_LOG_MESSAGES.CACHE_HIT);
-      return { status: 'hit', data: JSON.parse(raw) as CachedUrl };
+      return { status: 'hit', data: JSON.parse(raw) as CachedIdentifier };
     } catch (err: unknown) {
       this.logger.warn({ shortCode, err }, CACHE_LOG_MESSAGES.CACHE_GET_FAILED);
       return { status: 'miss' };
@@ -53,7 +53,7 @@ export class CacheService {
   /**
    * Store a resolved URL in cache with TTL.
    */
-  async set(shortCode: string, data: CachedUrl): Promise<void> {
+  async set(shortCode: string, data: CachedIdentifier): Promise<void> {
     try {
       await this.redis.setex(
         this.key(shortCode),

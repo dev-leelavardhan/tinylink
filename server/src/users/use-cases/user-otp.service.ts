@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 
 import {
   USER_CONSTANTS,
@@ -185,7 +185,7 @@ export class UserOtpService {
       };
 
       const inputHash = this.hashOtp(otp, salt);
-      if (inputHash !== hashedOtp) return null;
+      if (!this.safeCompare(inputHash, hashedOtp)) return null;
 
       return { email };
     } catch (err: unknown) {
@@ -208,7 +208,7 @@ export class UserOtpService {
       if (!otpRecord) return null;
 
       const inputHash = this.hashOtp(otp, otpRecord.salt);
-      if (otpRecord.otpHash !== inputHash) return null;
+      if (!this.safeCompare(otpRecord.otpHash, inputHash)) return null;
 
       return { email: otpRecord.email };
     } catch (err: unknown) {
@@ -222,19 +222,19 @@ export class UserOtpService {
     keyPrefix: string,
     type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' = 'EMAIL_VERIFICATION',
   ): Promise<void> {
-    // Mark as used in DB FIRST (prevents reuse via Redis fallback)
-    try {
-      await this.userRepository.markOtpUsed(userId, type);
-    } catch (err: unknown) {
-      this.logger.error({ err, userId }, 'Failed to mark OTP as used in DB');
-    }
-
-    // Then delete from Redis
+    // Delete from Redis first (fast path) to prevent reuse
     try {
       const key = `${keyPrefix}${userId}`;
       await this.redis.del(key);
     } catch {
-      // Redis unavailable — DB record already marked as used
+      // Redis unavailable — DB mark below is the safety net
+    }
+
+    // Mark as used in DB (safety net if Redis deletion failed)
+    try {
+      await this.userRepository.markOtpUsed(userId, type);
+    } catch (err: unknown) {
+      this.logger.error({ err, userId }, 'Failed to mark OTP as used in DB');
     }
   }
 
@@ -334,5 +334,10 @@ export class UserOtpService {
 
   private hashOtp(otp: string, salt: string): string {
     return createHash('sha256').update(`${otp}:${salt}`).digest('hex');
+  }
+
+  private safeCompare(a: string, b: string): boolean {
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
   }
 }

@@ -111,12 +111,14 @@ describe('CacheService', () => {
 
       const data = {
         id: '1',
+        urlId: 'url-1',
         originalUrl: 'https://example.com',
-        shortCode: 'test-code',
-        customAlias: null,
+        code: 'test-code',
+        kind: 'GENERATED' as const,
+        ownerId: null,
+        strategy: 'RANDOM' as const,
         disabled: false,
         expiresAt: null,
-        lastAccessedAt: null,
         deletedAt: null,
       };
 
@@ -134,12 +136,14 @@ describe('CacheService', () => {
 
       const data = {
         id: '1',
+        urlId: 'url-1',
         originalUrl: 'https://example.com',
-        shortCode: 'test-code',
-        customAlias: null,
+        code: 'test-code',
+        kind: 'GENERATED' as const,
+        ownerId: null,
+        strategy: 'RANDOM' as const,
         disabled: false,
         expiresAt: null,
-        lastAccessedAt: null,
         deletedAt: null,
       };
 

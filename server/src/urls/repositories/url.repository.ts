@@ -12,57 +12,29 @@ export class UrlRepository {
     });
   }
 
-  create(data: Prisma.UrlCreateInput): Promise<Url> {
-    return this.prisma.url.create({
-      data,
+  findByNormalizedUrl(normalizedUrl: string): Promise<Url | null> {
+    return this.prisma.url.findUnique({
+      where: { normalizedUrl },
     });
   }
 
-  async createWithSlugs(
+  async create(data: Prisma.UrlCreateInput): Promise<Url> {
+    return this.prisma.url.create({ data });
+  }
+
+  async createWithIdentifier(
     urlData: Prisma.UrlCreateInput,
-    slugs: Array<{ slug: string }>,
-  ): Promise<Url> {
+    identifierData: Omit<Prisma.IdentifierCreateInput, 'url'>,
+  ): Promise<{ url: Url; identifier: unknown }> {
     return this.prisma.$transaction(async (tx) => {
       const url = await tx.url.create({ data: urlData });
-
-      await tx.urlSlug.createMany({
-        data: slugs.map((s) => ({
-          slug: s.slug,
-          urlId: url.id,
-        })),
+      const identifier = await tx.identifier.create({
+        data: {
+          ...identifierData,
+          url: { connect: { id: url.id } },
+        },
       });
-
-      return url;
-    });
-  }
-
-  findByOriginalUrlAndStrategy(
-    originalUrl: string,
-    strategy: string,
-  ): Promise<Url | null> {
-    return this.prisma.url.findFirst({
-      where: {
-        originalUrl,
-        strategy,
-        deletedAt: null,
-      },
-    });
-  }
-
-  updateLastAccessedAt(id: string): Promise<Url> {
-    return this.prisma.url.update({
-      where: { id },
-      data: { lastAccessedAt: new Date() },
-    });
-  }
-
-  deleteExpiredUrls(): Promise<{ count: number }> {
-    return this.prisma.url.updateMany({
-      where: {
-        expiresAt: { lt: new Date() },
-        deletedAt: null,
-      },
-      data: { deletedAt: new Date() },
+      return { url, identifier };
     });
   }
 }

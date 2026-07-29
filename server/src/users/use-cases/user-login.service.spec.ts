@@ -122,6 +122,7 @@ describe('UserLoginService', () => {
         ...user,
         tokenVersion: 1,
       });
+      sessionRepository.findActiveByUserId.mockResolvedValue([]);
       sessionRepository.create.mockResolvedValue({ id: 'session-1' });
 
       const argon2 = jest.requireMock<typeof import('argon2')>('argon2');
@@ -440,6 +441,10 @@ describe('UserLoginService', () => {
 
   describe('logout', () => {
     it('should revoke session and audit log', async () => {
+      sessionRepository.findById.mockResolvedValue({
+        id: 'session-1',
+        userId: 'user-1',
+      });
       sessionRepository.revoke.mockResolvedValue({});
 
       await service.logout('user-1', 'session-1', '127.0.0.1', 'Mozilla/5.0');
@@ -448,6 +453,25 @@ describe('UserLoginService', () => {
       expect(auditService.log).toHaveBeenCalledWith(
         expect.objectContaining({ event: 'SESSION_REVOKED' }),
       );
+    });
+
+    it('should throw if session not found', async () => {
+      sessionRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.logout('user-1', 'session-1', '127.0.0.1', 'Mozilla/5.0'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw if session belongs to different user', async () => {
+      sessionRepository.findById.mockResolvedValue({
+        id: 'session-1',
+        userId: 'user-2',
+      });
+
+      await expect(
+        service.logout('user-1', 'session-1', '127.0.0.1', 'Mozilla/5.0'),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 

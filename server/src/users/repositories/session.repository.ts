@@ -135,28 +135,31 @@ export class SessionRepository {
     newSessionData: Prisma.SessionCreateInput,
     userId: string,
   ): Promise<{ session: Session; newTokenVersion: number }> {
-    return this.prisma.$transaction(async (tx) => {
-      const revokedAt = new Date();
+    return this.prisma.$transaction(
+      async (tx) => {
+        const revokedAt = new Date();
 
-      const updatedCount: number =
-        await tx.$executeRaw`UPDATE "Session" SET "revokedAt" = ${revokedAt} WHERE "id" = ${oldSessionId} AND "revokedAt" IS NULL`;
+        const updatedCount: number =
+          await tx.$executeRaw`UPDATE "Session" SET "revokedAt" = ${revokedAt} WHERE "id" = ${oldSessionId} AND "revokedAt" IS NULL`;
 
-      if (updatedCount === 0) {
-        throw new Error(
-          'Session already revoked (concurrent refresh detected)',
-        );
-      }
+        if (updatedCount === 0) {
+          throw new Error(
+            'Session already revoked (concurrent refresh detected)',
+          );
+        }
 
-      const updatedUser = await tx.user.update({
-        where: { id: userId },
-        data: { tokenVersion: { increment: 1 } },
-        select: { tokenVersion: true },
-      });
+        const updatedUser = await tx.user.update({
+          where: { id: userId },
+          data: { tokenVersion: { increment: 1 } },
+          select: { tokenVersion: true },
+        });
 
-      const session = await tx.session.create({ data: newSessionData });
+        const session = await tx.session.create({ data: newSessionData });
 
-      return { session, newTokenVersion: updatedUser.tokenVersion };
-    });
+        return { session, newTokenVersion: updatedUser.tokenVersion };
+      },
+      { isolationLevel: 'Serializable' },
+    );
   }
 
   updateRefreshTokenHash(

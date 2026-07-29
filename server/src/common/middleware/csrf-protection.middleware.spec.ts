@@ -21,19 +21,6 @@ describe('CsrfProtectionMiddleware', () => {
     process.env = originalEnv;
   });
 
-  it('should call next() when BASE_URL is not set', () => {
-    delete process.env.BASE_URL;
-    mockRequest = { headers: {} };
-
-    CsrfProtectionMiddleware(
-      mockRequest as Request,
-      mockResponse as unknown as Response,
-      mockNext,
-    );
-
-    expect(mockNext).toHaveBeenCalled();
-  });
-
   it('should call next() in development mode', () => {
     process.env.BASE_URL = 'https://example.com';
     process.env.NODE_ENV = 'development';
@@ -46,6 +33,21 @@ describe('CsrfProtectionMiddleware', () => {
     );
 
     expect(mockNext).toHaveBeenCalled();
+  });
+
+  it('should return 500 when BASE_URL is not set in production', () => {
+    delete process.env.BASE_URL;
+    process.env.NODE_ENV = 'production';
+    mockRequest = { headers: {} };
+
+    CsrfProtectionMiddleware(
+      mockRequest as Request,
+      mockResponse as unknown as Response,
+      mockNext,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(500);
+    expect(mockNext).not.toHaveBeenCalled();
   });
 
   it('should reject request without Origin header in production', () => {
@@ -97,7 +99,7 @@ describe('CsrfProtectionMiddleware', () => {
     expect(mockResponse.status).not.toHaveBeenCalled();
   });
 
-  it('should accept request with matching referer in production', () => {
+  it('should reject request with only Referer header (no Origin)', () => {
     process.env.BASE_URL = 'https://example.com';
     process.env.NODE_ENV = 'production';
     mockRequest = {
@@ -110,8 +112,8 @@ describe('CsrfProtectionMiddleware', () => {
       mockNext,
     );
 
-    expect(mockNext).toHaveBeenCalled();
-    expect(mockResponse.status).not.toHaveBeenCalled();
+    expect(mockResponse.status).toHaveBeenCalledWith(403);
+    expect(mockNext).not.toHaveBeenCalled();
   });
 
   it('should handle array origin header', () => {
@@ -145,5 +147,19 @@ describe('CsrfProtectionMiddleware', () => {
 
     expect(mockResponse.status).toHaveBeenCalledWith(403);
     expect(mockNext).not.toHaveBeenCalled();
+  });
+
+  it('should skip CSRF in test mode', () => {
+    process.env.BASE_URL = 'https://example.com';
+    process.env.NODE_ENV = 'test';
+    mockRequest = { headers: {} };
+
+    CsrfProtectionMiddleware(
+      mockRequest as Request,
+      mockResponse as unknown as Response,
+      mockNext,
+    );
+
+    expect(mockNext).toHaveBeenCalled();
   });
 });

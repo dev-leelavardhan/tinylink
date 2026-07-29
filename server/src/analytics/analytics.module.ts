@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../common/auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RedisModule } from '../redis/redis.module';
-import { UrlRepository } from '../urls/repositories/url.repository';
+import { IdentifierRepository } from '../urls/repositories/identifier.repository';
 
 import { AnalyticsController } from './controllers/analytics.controller';
 import { AnalyticsMapper } from './mappers/analytics.mapper';
@@ -35,7 +35,7 @@ import { AnalyticsWorker } from './worker/analytics.worker';
 
     // Persistence
     AnalyticsRepository,
-    UrlRepository,
+    IdentifierRepository,
 
     // Mapping
     AnalyticsMapper,

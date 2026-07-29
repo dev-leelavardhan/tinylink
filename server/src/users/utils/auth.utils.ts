@@ -26,7 +26,17 @@ export function daysAgo(days: number): Date {
 // ============================================================================
 
 export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
+  const normalized = email.trim().toLowerCase();
+  const [local, domain] = normalized.split('@');
+  if (!local || !domain) return normalized;
+
+  // Gmail-style normalization: strip dots and plus aliases
+  if (domain === 'gmail.com' || domain === 'googlemail.com') {
+    const cleaned = local.replace(/\./g, '').split('+')[0];
+    return `${cleaned}@gmail.com`;
+  }
+
+  return normalized;
 }
 
 // ============================================================================
@@ -100,7 +110,7 @@ export function setRefreshTokenCookie(
   res.cookie(USER_CONSTANTS.SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'lax',
+    sameSite: 'strict',
     path: USER_CONSTANTS.SESSION_COOKIE_PATH,
     maxAge: maxAgeMs,
   });
@@ -110,7 +120,7 @@ export function clearRefreshTokenCookie(res: Response): void {
   res.cookie(USER_CONSTANTS.SESSION_COOKIE_NAME, '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
     path: USER_CONSTANTS.SESSION_COOKIE_PATH,
     maxAge: 0,
   });

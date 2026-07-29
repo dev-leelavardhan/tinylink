@@ -13,7 +13,7 @@ describe('AnalyticsController', () => {
 
   beforeEach(async () => {
     service = {
-      verifyOwnership: jest.fn().mockResolvedValue(undefined),
+      verifyOwnership: jest.fn().mockResolvedValue(['id-1']),
       getAggregated: jest.fn(),
       getRecentClicks: jest.fn(),
     };
@@ -45,7 +45,9 @@ describe('AnalyticsController', () => {
       );
 
       expect(service.verifyOwnership).toHaveBeenCalledWith('url-id', 'user-1');
-      expect(service.getAggregated).toHaveBeenCalledWith('url-id', 30);
+      expect(service.getAggregated).toHaveBeenCalledWith('url-id', 30, [
+        'id-1',
+      ]);
       expect(result).toEqual(expected);
     });
 
@@ -77,7 +79,9 @@ describe('AnalyticsController', () => {
       );
 
       expect(service.verifyOwnership).toHaveBeenCalledWith('url-id', 'user-1');
-      expect(service.getRecentClicks).toHaveBeenCalledWith('url-id', 1, 10);
+      expect(service.getRecentClicks).toHaveBeenCalledWith('url-id', 1, 10, [
+        'id-1',
+      ]);
       expect(result).toEqual(expected);
     });
   });

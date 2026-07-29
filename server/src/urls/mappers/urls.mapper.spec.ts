@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { UrlMapper } from './urls.mapper';
 import { createConfigMock } from '../../testing/mocks';
-import { type Url } from '../types';
+import { type Identifier, type Url } from '@prisma/client';
 
 describe('UrlMapper', () => {
   let mapper: UrlMapper;
@@ -17,21 +17,32 @@ describe('UrlMapper', () => {
   });
 
   describe('toResponse', () => {
-    it('maps a Url entity to CreateUrlResponseDto', () => {
+    it('maps Url + Identifier to CreateUrlResponseDto', () => {
       const url: Url = {
         id: '1',
         originalUrl: 'https://example.com',
-        shortCode: 'abc123',
-        customAlias: null,
-        disabled: false,
+        normalizedUrl: 'https://example.com',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const identifier: Identifier = {
+        id: 'i1',
+        code: 'abc123',
+        kind: 'GENERATED',
+        strategy: 'RANDOM',
+        urlId: '1',
+        ownerId: null,
         expiresAt: null,
+        disabled: false,
         deletedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
-      const result = mapper.toResponse(url);
+      const result = mapper.toResponse(url, identifier);
 
       expect(result).toEqual({
-        id: '1',
+        id: 'i1',
         originalUrl: 'https://example.com',
         shortCode: 'abc123',
         shortUrl: 'http://localhost:3000/abc123',
@@ -40,41 +51,63 @@ describe('UrlMapper', () => {
   });
 
   describe('toCached', () => {
-    it('maps a Url entity to CachedUrl with expiresAt as ISO string', () => {
+    it('maps Url + Identifier to CachedIdentifier with expiresAt as ISO string', () => {
       const expiresAt = new Date('2025-12-31T23:59:59.000Z');
       const url: Url = {
         id: '2',
         originalUrl: 'https://example.com',
-        shortCode: 'xyz789',
-        customAlias: 'my-alias',
-        disabled: false,
+        normalizedUrl: 'https://example.com',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const identifier: Identifier = {
+        id: 'i2',
+        code: 'xyz789',
+        kind: 'CUSTOM_ALIAS',
+        strategy: 'MANUAL',
+        urlId: '2',
+        ownerId: null,
         expiresAt,
+        disabled: false,
         deletedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
-      const result = mapper.toCached(url);
+      const result = mapper.toCached(url, identifier);
 
-      expect(result.id).toBe('2');
+      expect(result.id).toBe('i2');
+      expect(result.urlId).toBe('2');
       expect(result.originalUrl).toBe('https://example.com');
-      expect(result.shortCode).toBe('xyz789');
-      expect(result.customAlias).toBe('my-alias');
+      expect(result.code).toBe('xyz789');
+      expect(result.kind).toBe('CUSTOM_ALIAS');
       expect(result.disabled).toBe(false);
       expect(result.expiresAt).toBe(expiresAt.toISOString());
-      expect(result.lastAccessedAt).toBeDefined();
     });
 
-    it('maps null expiresAt to null string', () => {
+    it('maps null expiresAt to null', () => {
       const url: Url = {
         id: '3',
         originalUrl: 'https://example.com',
-        shortCode: 'noexp',
-        customAlias: null,
-        disabled: true,
+        normalizedUrl: 'https://example.com',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const identifier: Identifier = {
+        id: 'i3',
+        code: 'noexp',
+        kind: 'GENERATED',
+        strategy: 'RANDOM',
+        urlId: '3',
+        ownerId: null,
         expiresAt: null,
+        disabled: true,
         deletedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
-      const result = mapper.toCached(url);
+      const result = mapper.toCached(url, identifier);
 
       expect(result.expiresAt).toBeNull();
       expect(result.disabled).toBe(true);
