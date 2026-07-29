@@ -3,7 +3,7 @@ FROM node:24-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+RUN corepack enable && corepack prepare pnpm@11.10.0 --activate
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ WORKDIR /app
 # ---------------------------------------------------------------------------
 FROM base AS deps
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # ---------------------------------------------------------------------------
@@ -20,7 +20,7 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 # ---------------------------------------------------------------------------
 FROM base AS prod-deps
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
 # ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ RUN apk add --no-cache tini
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
@@ -67,7 +67,7 @@ RUN apk add --no-cache tini wget
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --from=prod-deps /app/node_modules ./node_modules
 # Overlay the generated Prisma client (produced during build) onto prod deps.
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma

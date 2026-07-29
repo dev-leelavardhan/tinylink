@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 
 import configuration from '../../src/config/configuration';
+import { MetricsModule } from '../../src/metrics/metrics.module';
 import { PrismaModule } from '../../src/prisma/prisma.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { RedisModule } from '../../src/redis/redis.module';
@@ -27,6 +28,7 @@ describe('UrlsService (integration)', () => {
         }),
         ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
         LoggerModule.forRoot({ pinoHttp: { level: 'silent' } }),
+        MetricsModule,
         PrismaModule,
         RedisModule,
         ShortCodeModule,
