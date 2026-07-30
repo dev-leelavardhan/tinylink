@@ -167,6 +167,25 @@ will collide (the app fails fast if it is missing).
 - **Tracing**: set `OTEL_EXPORTER_OTLP_ENDPOINT` to export OpenTelemetry traces (auto-instrumentation for HTTP, Postgres, Redis, etc.).
 - **Logs**: structured JSON via Pino; level controlled by `LOG_LEVEL`.
 
+### Prometheus (local)
+
+The app only *exposes* metrics; run a Prometheus server to scrape them. The dev
+`docker compose up -d` now includes a `prometheus` service (config in `prometheus.yml`):
+
+```bash
+docker compose up -d prometheus     # or `docker compose up -d` for the whole stack
+pnpm start:dev                      # the app must be running to be scraped
+```
+
+- Prometheus UI: `http://localhost:9090` (try queries like `http_requests_total` or
+  `rate(http_request_duration_seconds_count[5m])`).
+- Confirm the target is healthy at `http://localhost:9090/targets` (job `tinylink`).
+- It scrapes `host.docker.internal:3000` because the app runs on the host. If you instead run
+  the app as its own Compose service, point the target at that service name (e.g. `app:3000`)
+  in `prometheus.yml`.
+- `/metrics` is unauthenticated — in production keep it on the private network (the prod
+  compose binds the app to `127.0.0.1` behind a reverse proxy) and do not expose it publicly.
+
 ## Short-code strategies
 
 `SHORT_CODE_STRATEGY` selects how short codes are generated. Choose based on your throughput,
@@ -230,7 +249,10 @@ then be retained for a shorter window than the aggregates.
 
 ## API documentation
 
-Interactive Swagger UI is served at `/docs` (OpenAPI JSON at `/docs-json`).
+Interactive Swagger UI is served at `/docs` (OpenAPI JSON at `/docs-json`) in non-production environments.
+
+For a hands-on, endpoint-by-endpoint walkthrough (curl examples covering the full auth, URL,
+QR, analytics, and session flows), see the [API testing guide](./API_TESTING.md).
 
 ## Troubleshooting
 

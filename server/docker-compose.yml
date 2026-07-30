@@ -15,5 +15,20 @@ services:
   redis:
     image: redis:7
     ports: ['6379:6379']
+  # Scrapes the API's /metrics endpoint. UI at http://localhost:9090.
+  # Assumes the app runs on the host (`pnpm start:dev`); the scrape target
+  # (host.docker.internal:3000) is configured in prometheus.yml.
+  prometheus:
+    image: prom/prometheus:latest
+    ports: ['9090:9090']
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    extra_hosts:
+      # Lets the container resolve the Docker host on Linux (already works on
+      # Docker Desktop for macOS/Windows).
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
 volumes:
   pgdata:
+  promdata:
