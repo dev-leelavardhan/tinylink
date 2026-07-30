@@ -21,7 +21,11 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 FROM base AS prod-deps
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --prod --frozen-lockfile --ignore-scripts
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
+RUN pnpm install --prod --frozen-lockfile
+RUN pnpm prisma generate
 
 # ---------------------------------------------------------------------------
 # Build the application and generate the Prisma client.
@@ -70,7 +74,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --from=prod-deps /app/node_modules ./node_modules
 # Overlay the generated Prisma client (produced during build) onto prod deps.
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+
 COPY --from=build /app/dist ./dist
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
