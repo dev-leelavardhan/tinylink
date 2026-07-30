@@ -76,6 +76,14 @@ export class UserResetPasswordService {
 
     await this.userRepository.updatePassword(user.id, newPasswordHash);
 
+    // A valid PASSWORD_RESET OTP proves the user controls the email address, so
+    // treat a reset for a still-unverified account as email verification and
+    // activate it. Without this the account could reset its password yet remain
+    // stuck in PENDING_VERIFICATION and unable to log in.
+    if (user.status === 'PENDING_VERIFICATION') {
+      await this.userRepository.activateAndVerify(user.id);
+    }
+
     // Invalidate existing authentication
     const updatedUser = await this.userRepository.incrementTokenVersion(
       user.id,

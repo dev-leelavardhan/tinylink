@@ -244,6 +244,25 @@ describe('UserRepository', () => {
     });
   });
 
+  describe('activateAndVerify', () => {
+    it('should set status ACTIVE and emailVerified in a single update', async () => {
+      const updatedUser = {
+        id: 'user-1',
+        status: 'ACTIVE',
+        emailVerified: true,
+      };
+      prisma.user.update.mockResolvedValue(updatedUser);
+
+      const result = await repository.activateAndVerify('user-1');
+
+      expect(result).toEqual(updatedUser);
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { status: 'ACTIVE', emailVerified: true },
+      });
+    });
+  });
+
   describe('findMany', () => {
     it('should find users with email filter', async () => {
       const users = [{ id: 'user-1' }];

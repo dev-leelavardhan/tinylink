@@ -161,6 +161,19 @@ export class UserRepository {
     });
   }
 
+  /**
+   * Atomically mark the account ACTIVE and its email verified in a single write.
+   * Doing both in one update avoids a half-applied state (e.g. ACTIVE but
+   * emailVerified=false) that would leave the user unable to log in *and*
+   * unable to re-verify.
+   */
+  activateAndVerify(userId: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { status: 'ACTIVE', emailVerified: true },
+    });
+  }
+
   private buildFilter(filter: UserFilter): Prisma.UserWhereInput {
     const where: Prisma.UserWhereInput = {};
 

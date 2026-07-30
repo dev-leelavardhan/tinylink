@@ -13,6 +13,7 @@ import { createLoggerMock } from '../../testing/mocks';
 
 jest.mock('argon2', () => ({
   verify: jest.fn(),
+  hash: jest.fn().mockResolvedValue('equalized-hash'),
 }));
 
 jest.mock('../utils/auth.utils', () => ({
@@ -178,7 +179,7 @@ describe('UserLoginService', () => {
       ).toHaveBeenCalledWith('user-1');
     });
 
-    it('should throw ForbiddenException for locked account', async () => {
+    it('should throw generic UnauthorizedException for a locked account without verifying the password or recording a new failure', async () => {
       const user = {
         id: 'user-1',
         email: dto.email,
@@ -190,13 +191,24 @@ describe('UserLoginService', () => {
       repository.findByEmail.mockResolvedValue(user);
       bruteForceService.isLocked.mockResolvedValue(true);
 
-      // Credentials are now verified before account state is revealed, so the
-      // password must be valid for the lock to surface.
       const argon2 = jest.requireMock<typeof import('argon2')>('argon2');
       (argon2.verify as jest.Mock).mockResolvedValue(true);
 
+      // Locked accounts are rejected with the same generic error as a wrong
+      // password (no enumeration) before the password is ever checked.
       await expect(service.login(dto, ip, userAgent)).rejects.toThrow(
-        ForbiddenException,
+        UnauthorizedException,
+      );
+      expect(argon2.verify).not.toHaveBeenCalled();
+      // The lock window must not be extended by attempts made while locked.
+      expect(
+        bruteForceService.checkAndRecordFailedAttempt,
+      ).not.toHaveBeenCalled();
+      expect(auditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'LOGIN_FAILED',
+          metadata: { reason: 'account_locked' },
+        }),
       );
     });
 

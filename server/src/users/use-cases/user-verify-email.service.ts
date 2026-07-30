@@ -46,11 +46,10 @@ export class UserVerifyEmailService {
       throw new BadRequestException(USER_ERROR_MESSAGES.INVALID_OTP);
     }
 
-    // Update user status
-    await this.userRepository.updateStatus(user.id, 'ACTIVE');
-
-    // Mark email as verified
-    await this.userRepository.markEmailVerified(user.id);
+    // Atomically activate the account and mark the email verified so we can
+    // never end up half-applied (ACTIVE but unverified), which would lock the
+    // user out of both login and re-verification.
+    await this.userRepository.activateAndVerify(user.id);
 
     this.logger.info({ userId: user.id }, USER_LOG_MESSAGES.OTP_VERIFIED);
     await this.auditService.logEmailVerificationSuccess(user.id);

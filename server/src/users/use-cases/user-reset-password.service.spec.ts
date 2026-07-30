@@ -22,6 +22,7 @@ describe('UserResetPasswordService', () => {
     findByEmail: jest.fn(),
     updatePassword: jest.fn(),
     incrementTokenVersion: jest.fn(),
+    activateAndVerify: jest.fn(),
   };
 
   const sessionRepository = {
@@ -93,6 +94,44 @@ describe('UserResetPasswordService', () => {
       expect(auditService.log).toHaveBeenCalledWith(
         expect.objectContaining({ event: 'PASSWORD_RESET_COMPLETED' }),
       );
+    });
+
+    it('should not activate an already-active account', async () => {
+      userRepository.findByEmail.mockResolvedValue({
+        id: 'user-1',
+        passwordHash: 'old-hash',
+        status: 'ACTIVE',
+      });
+      otpService.verify.mockResolvedValue(true);
+      (argon2.verify as jest.Mock).mockResolvedValue(false);
+      (argon2.hash as jest.Mock).mockResolvedValue('new-hash');
+      userRepository.incrementTokenVersion.mockResolvedValue({
+        tokenVersion: 2,
+      });
+      sessionRepository.revokeAllForUser.mockResolvedValue({ count: 1 });
+
+      await service.execute(dto);
+
+      expect(userRepository.activateAndVerify).not.toHaveBeenCalled();
+    });
+
+    it('should verify and activate a still-unverified account on reset', async () => {
+      userRepository.findByEmail.mockResolvedValue({
+        id: 'user-1',
+        passwordHash: 'old-hash',
+        status: 'PENDING_VERIFICATION',
+      });
+      otpService.verify.mockResolvedValue(true);
+      (argon2.verify as jest.Mock).mockResolvedValue(false);
+      (argon2.hash as jest.Mock).mockResolvedValue('new-hash');
+      userRepository.incrementTokenVersion.mockResolvedValue({
+        tokenVersion: 2,
+      });
+      sessionRepository.revokeAllForUser.mockResolvedValue({ count: 1 });
+
+      await service.execute(dto);
+
+      expect(userRepository.activateAndVerify).toHaveBeenCalledWith('user-1');
     });
 
     it('should throw if user not found', async () => {

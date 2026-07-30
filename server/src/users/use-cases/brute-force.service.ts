@@ -16,9 +16,20 @@ export class BruteForceService {
   }
 
   async checkAndRecordFailedAttempt(userId: string): Promise<void> {
+    const key = `${USER_CONSTANTS.BRUTE_FORCE_KEY_PREFIX}${userId}`;
+    const lockKey = `${USER_CONSTANTS.BRUTE_FORCE_LOCK_KEY_PREFIX}${userId}`;
+    const lockDurationSeconds = USER_CONSTANTS.LOCK_DURATION_MINUTES * 60;
+
     try {
-      const key = `${USER_CONSTANTS.BRUTE_FORCE_KEY_PREFIX}${userId}`;
-      const lockDurationSeconds = USER_CONSTANTS.LOCK_DURATION_MINUTES * 60;
+      // Fixed-window lock: if the account is already within an active lock,
+      // do NOT record another failure. Otherwise a slow trickle of wrong
+      // guesses would keep pushing the lock forward and turn a temporary
+      // lockout into a permanent one (denial of service against the owner).
+      const alreadyLocked = await this.redis.get(lockKey);
+      if (alreadyLocked) {
+        return;
+      }
+
       const results = await this.redis
         .multi()
         .incr(key)
@@ -27,18 +38,18 @@ export class BruteForceService {
       const count = results?.[0]?.[1] as number;
 
       if (count >= USER_CONSTANTS.MAX_FAILED_LOGIN_ATTEMPTS) {
-        const lockUntil = new Date(
-          Date.now() + USER_CONSTANTS.LOCK_DURATION_MINUTES * 60 * 1000,
-        );
+        const lockUntil = new Date(Date.now() + lockDurationSeconds * 1000);
 
         await this.userRepository.lockAccount(userId, lockUntil);
 
-        const lockKey = `${USER_CONSTANTS.BRUTE_FORCE_LOCK_KEY_PREFIX}${userId}`;
-        await this.redis.setex(
-          lockKey,
-          USER_CONSTANTS.LOCK_DURATION_MINUTES * 60,
-          '1',
-        );
+        // Fixed-window lock key. It is never refreshed by later attempts
+        // (see the early return above), so it always expires after
+        // LOCK_DURATION_MINUTES.
+        await this.redis.setex(lockKey, lockDurationSeconds, '1');
+
+        // Clear the attempt counter so the next window starts clean once the
+        // lock expires — prevents a single stray attempt from re-locking.
+        await this.redis.del(key);
 
         this.logger.warn(
           { userId, failedAttempts: count },

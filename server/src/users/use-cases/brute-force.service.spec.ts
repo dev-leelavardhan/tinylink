@@ -87,6 +87,29 @@ describe('BruteForceService', () => {
       );
     });
 
+    it('should NOT record a new failure while already locked (fixed window)', async () => {
+      redis.get.mockResolvedValue('1'); // active lock present
+
+      await service.checkAndRecordFailedAttempt('user-1');
+
+      expect(redis.multi).not.toHaveBeenCalled();
+      expect(userRepository.lockAccount).not.toHaveBeenCalled();
+    });
+
+    it('should clear the attempt counter when locking so the next window starts clean', async () => {
+      redis.get.mockResolvedValue(null);
+      redisMultiChain.exec.mockResolvedValue([
+        [null, USER_CONSTANTS.MAX_FAILED_LOGIN_ATTEMPTS],
+      ]);
+      userRepository.lockAccount.mockResolvedValue({});
+
+      await service.checkAndRecordFailedAttempt('user-1');
+
+      expect(redis.del).toHaveBeenCalledWith(
+        `${USER_CONSTANTS.BRUTE_FORCE_KEY_PREFIX}user-1`,
+      );
+    });
+
     it('should handle Redis failure gracefully', async () => {
       redisMultiChain.exec.mockRejectedValue(new Error('Redis unavailable'));
 

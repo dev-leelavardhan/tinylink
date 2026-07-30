@@ -81,6 +81,26 @@ export class UserLoginService {
       throw new UnauthorizedException(USER_ERROR_MESSAGES.LOGIN_FAILED);
     }
 
+    // Check the lock *before* verifying the password. `isLocked` also clears an
+    // expired lock (fixed-window auto-unlock) so the account recovers on its
+    // own after LOCK_DURATION_MINUTES without needing a successful login. While
+    // locked we equalize timing and never record another failed attempt (so the
+    // lock window can't be pushed forward), and we return the same generic error
+    // as a wrong password to avoid revealing that the account exists/is locked.
+    if (await this.bruteForceService.isLocked(user.id)) {
+      await this.equalizePasswordTiming(dto.password);
+
+      await this.auditService.log({
+        userId: user.id,
+        event: 'LOGIN_FAILED',
+        metadata: { reason: 'account_locked' },
+        ipAddress: ip,
+        userAgent,
+      });
+
+      throw new UnauthorizedException(USER_ERROR_MESSAGES.LOGIN_FAILED);
+    }
+
     const passwordValid = await argon2.verify(user.passwordHash, dto.password);
     if (!passwordValid) {
       await this.bruteForceService.checkAndRecordFailedAttempt(user.id);
@@ -97,11 +117,6 @@ export class UserLoginService {
     }
 
     // Credentials are valid — it is now safe to surface account state.
-    const locked = await this.bruteForceService.isLocked(user.id);
-    if (locked) {
-      throw new ForbiddenException(USER_ERROR_MESSAGES.ACCOUNT_LOCKED);
-    }
-
     if (user.status === 'PENDING_VERIFICATION') {
       throw new ForbiddenException(
         USER_ERROR_MESSAGES.ACCOUNT_PENDING_VERIFICATION,

@@ -13,8 +13,7 @@ describe('UserVerifyEmailService', () => {
 
   const repository = {
     findByEmail: jest.fn(),
-    updateStatus: jest.fn().mockResolvedValue({}),
-    markEmailVerified: jest.fn().mockResolvedValue({}),
+    activateAndVerify: jest.fn().mockResolvedValue({}),
   };
 
   const otpService = {
@@ -60,8 +59,7 @@ describe('UserVerifyEmailService', () => {
 
       await service.verify('test@example.com', '123456');
 
-      expect(repository.updateStatus).toHaveBeenCalledWith('user-1', 'ACTIVE');
-      expect(repository.markEmailVerified).toHaveBeenCalledWith('user-1');
+      expect(repository.activateAndVerify).toHaveBeenCalledWith('user-1');
     });
 
     it('should throw BadRequestException if user not found (prevent email enumeration)', async () => {

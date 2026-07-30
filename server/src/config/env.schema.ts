@@ -14,6 +14,14 @@ export const envSchema = z
     // `all` (default) runs both in a single process.
     SERVICE_ROLE: z.enum(SERVICE_ROLES).default('all'),
 
+    // Number of trusted reverse-proxy hops in front of the app (Express
+    // `trust proxy`). This governs how `req.ip` is derived from
+    // `X-Forwarded-For`, which every IP-based rate limit relies on. It MUST
+    // equal the real number of proxies in front of the app: too high lets
+    // clients spoof their IP (bypassing rate limits); too low breaks limits
+    // behind a load balancer. Set to 0 when the app is exposed directly.
+    TRUST_PROXY: z.coerce.number().int().min(0).default(1),
+
     // Pino log level.
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
@@ -68,6 +76,16 @@ export const envSchema = z
     MAILER_NAME: z.string().optional(),
   })
   .superRefine((env, ctx) => {
+    // Access and refresh tokens are signed with separate secrets on purpose;
+    // reusing the same value collapses that isolation to just the `type` claim.
+    if (env.JWT_ACCESS_SECRET === env.JWT_REFRESH_SECRET) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['JWT_REFRESH_SECRET'],
+        message: 'JWT_REFRESH_SECRET must be different from JWT_ACCESS_SECRET',
+      });
+    }
+
     if (env.SHORT_CODE_STRATEGY === 'hashids' && !env.SHORT_CODE_HASHIDS_SALT) {
       ctx.addIssue({
         code: 'custom',

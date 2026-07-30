@@ -9,8 +9,11 @@ import { CsrfProtectionMiddleware } from '../middleware/csrf-protection.middlewa
  * Shared between production bootstrap and E2E tests.
  */
 export function applyMiddleware(expressApp: express.Express): void {
-  // Trust proxy
-  expressApp.set('trust proxy', 1);
+  // Trust proxy. Must match the real number of reverse-proxy hops in front of
+  // the app so `req.ip` (and every IP-based rate limit) reflects the true
+  // client and can't be spoofed via X-Forwarded-For. Configurable via
+  // TRUST_PROXY; defaults to a single hop.
+  expressApp.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
 
   // Security headers (Helmet)
   expressApp.use(

@@ -76,6 +76,7 @@ Copy `.env.example` and fill in every value. Key variables:
 | `PORT` | no | Defaults to `3000` |
 | `BASE_URL` | yes | Public origin; also used to build the HTTPS-redirect host |
 | `SERVICE_ROLE` | no | `web` \| `worker` \| `all` (default `all`) |
+| `TRUST_PROXY` | no | Trusted reverse-proxy hop count for `req.ip` (default `1`). MUST match the real number of proxies so IP-based rate limits can't be spoofed via `X-Forwarded-For`; use `0` when exposed directly |
 | `DATABASE_URL` | yes | PostgreSQL connection string |
 | `REDIS_URL` | yes | Redis connection string |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | yes | Min 32 chars, distinct values |

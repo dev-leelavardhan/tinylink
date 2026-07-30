@@ -31,10 +31,11 @@ describe('Auth Flow (e2e)', () => {
 
   beforeEach(async () => {
     await cleanDatabase(prisma);
-    // Clean Redis rate limit and brute force keys
-    const keys = await redis.keys('auth:*');
+    // Clean Redis rate limit, brute force, and throttle keys
+    const authKeys = await redis.keys('auth:*');
     const otpKeys = await redis.keys('otp:*');
-    const allKeys = [...keys, ...otpKeys];
+    const throttleKeys = await redis.keys('throttle:*');
+    const allKeys = [...authKeys, ...otpKeys, ...throttleKeys];
     if (allKeys.length > 0) {
       await redis.del(...allKeys);
     }

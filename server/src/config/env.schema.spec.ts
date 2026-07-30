@@ -28,7 +28,31 @@ describe('envSchema (unit)', () => {
       expect(result.data.SHORT_CODE_STRATEGY).toBe('random');
       expect(result.data.SHORT_CODE_LENGTH).toBe(7);
       expect(result.data.SHORT_CODE_SNOWFLAKE_WORKER_ID).toBe(1);
+      expect(result.data.TRUST_PROXY).toBe(1);
     }
+  });
+
+  it('coerces TRUST_PROXY and accepts 0 (direct exposure)', () => {
+    const result = envSchema.safeParse({ ...validEnv, TRUST_PROXY: '0' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.TRUST_PROXY).toBe(0);
+    }
+  });
+
+  it('rejects a negative TRUST_PROXY', () => {
+    const result = envSchema.safeParse({ ...validEnv, TRUST_PROXY: -1 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects identical JWT access and refresh secrets', () => {
+    const secret = 'a'.repeat(32);
+    const result = envSchema.safeParse({
+      ...validEnv,
+      JWT_ACCESS_SECRET: secret,
+      JWT_REFRESH_SECRET: secret,
+    });
+    expect(result.success).toBe(false);
   });
 
   it('rejects invalid NODE_ENV', () => {
