@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UrlCacheService } from './urls-cache.service';
 import { CacheService } from '../../cache/service/cache.service';
-import { CachedUrl } from '../../cache/types';
+import { CachedIdentifier } from '../../cache/types';
 import { PinoLogger } from 'nestjs-pino';
 
 describe('UrlCacheService', () => {
@@ -10,18 +10,19 @@ describe('UrlCacheService', () => {
     get: jest.Mock;
     set: jest.Mock;
     setNegative: jest.Mock;
-    invalidate: jest.Mock;
-    invalidateAll: jest.Mock;
   };
 
-  const sampleCached: CachedUrl = {
+  const sampleCached: CachedIdentifier = {
     id: '1',
+    urlId: 'url-1',
     originalUrl: 'https://example.com',
-    shortCode: 'abc',
-    customAlias: null,
+    code: 'abc',
+    kind: 'GENERATED',
+    ownerId: null,
+    strategy: 'RANDOM',
     disabled: false,
     expiresAt: null,
-    lastAccessedAt: null,
+    deletedAt: null,
   };
 
   beforeEach(async () => {
@@ -31,8 +32,6 @@ describe('UrlCacheService', () => {
       get: jest.fn(),
       set: jest.fn(),
       setNegative: jest.fn(),
-      invalidate: jest.fn(),
-      invalidateAll: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -54,7 +53,7 @@ describe('UrlCacheService', () => {
   });
 
   describe('get', () => {
-    it('returns parsed CachedUrl on cache hit', async () => {
+    it('returns parsed CachedIdentifier on cache hit', async () => {
       cacheService.get.mockResolvedValue(sampleCached);
 
       const result = await service.get('abc');
@@ -89,37 +88,6 @@ describe('UrlCacheService', () => {
       await service.setNegative('abc');
 
       expect(cacheService.setNegative).toHaveBeenCalledWith('abc');
-    });
-  });
-
-  describe('invalidate', () => {
-    it('invalidates via cache service', async () => {
-      cacheService.invalidate.mockResolvedValue(undefined);
-
-      await service.invalidate('abc');
-
-      expect(cacheService.invalidate).toHaveBeenCalledWith('abc');
-    });
-  });
-
-  describe('invalidateAll', () => {
-    it('invalidates both shortCode and customAlias via cache service', async () => {
-      cacheService.invalidateAll.mockResolvedValue(undefined);
-
-      await service.invalidateAll('abc', 'my-alias');
-
-      expect(cacheService.invalidateAll).toHaveBeenCalledWith(
-        'abc',
-        'my-alias',
-      );
-    });
-
-    it('only invalidates shortCode when customAlias is null', async () => {
-      cacheService.invalidateAll.mockResolvedValue(undefined);
-
-      await service.invalidateAll('abc', null);
-
-      expect(cacheService.invalidateAll).toHaveBeenCalledWith('abc', null);
     });
   });
 });

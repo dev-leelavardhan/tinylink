@@ -1,0 +1,137 @@
+# =============================================================================
+# TinyLink — Production Compose (Docker Compose on a VM)
+# =============================================================================
+# Datastore ports are NOT published to the host. Only the app is exposed
+# (put a TLS-terminating reverse proxy in front of it).
+#
+# Required env (provide via a root `.env` next to this file, or the shell):
+#   IMAGE, MIGRATE_IMAGE     - image refs pushed by CD (immutable SHA tags)
+#   POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+#   REDIS_PASSWORD
+#   DATABASE_URL             - e.g. postgresql://user:pass@postgres:5432/db
+#   REDIS_URL                - e.g. redis://:<REDIS_PASSWORD>@redis:6379
+#   JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, BASE_URL, IP_HASH_SALT, MAILER_*
+# =============================================================================
+
+x-app-env: &app-env
+  NODE_ENV: production
+  DATABASE_URL: ${DATABASE_URL}
+  REDIS_URL: ${REDIS_URL}
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+  BASE_URL: ${BASE_URL}
+  CORS_ORIGIN: ${CORS_ORIGIN:-}
+  SHORT_CODE_STRATEGY: ${SHORT_CODE_STRATEGY:-random}
+  SHORT_CODE_LENGTH: ${SHORT_CODE_LENGTH:-7}
+  IP_HASH_SALT: ${IP_HASH_SALT}
+  GEOLITE2_DB_PATH: ${GEOLITE2_DB_PATH:-}
+  MAILER_HOST: ${MAILER_HOST}
+  MAILER_PORT: ${MAILER_PORT:-587}
+  MAILER_SECURE: ${MAILER_SECURE:-false}
+  MAILER_USER: ${MAILER_USER}
+  MAILER_PASS: ${MAILER_PASS}
+  MAILER_FROM: ${MAILER_FROM}
+  MAILER_NAME: ${MAILER_NAME:-}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}']
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  # One-shot: applies migrations, then exits. App/worker wait for success.
+  migrate:
+    image: ${MIGRATE_IMAGE}
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  app:
+    image: ${IMAGE}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      SERVICE_ROLE: web
+      PORT: 3000
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/health/ready']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  worker:
+    image: ${IMAGE}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      SERVICE_ROLE: worker
+      PORT: 3000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/health/live']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+volumes:
+  pgdata:
+  redisdata:

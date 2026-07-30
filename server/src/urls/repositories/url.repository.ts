@@ -6,37 +6,35 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class UrlRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(data: Prisma.UrlCreateInput): Promise<Url> {
-    return this.prisma.url.create({
-      data,
+  findById(id: string): Promise<Url | null> {
+    return this.prisma.url.findUnique({
+      where: { id },
     });
   }
 
-  async findByAlias(alias: string) {
-    return this.prisma.url.findFirst({
-      where: {
-        OR: [{ customAlias: alias }, { shortCode: alias }],
-      },
+  findByNormalizedUrl(normalizedUrl: string): Promise<Url | null> {
+    return this.prisma.url.findUnique({
+      where: { normalizedUrl },
     });
   }
 
-  findByOriginalUrlAndStrategy(
-    originalUrl: string,
-    strategy: string,
-  ): Promise<Url | null> {
-    return this.prisma.url.findFirst({
-      where: {
-        originalUrl,
-        strategy,
-      },
-    });
+  async create(data: Prisma.UrlCreateInput): Promise<Url> {
+    return this.prisma.url.create({ data });
   }
 
-  findByShortCodeOrAlias(shortCode: string): Promise<Url | null> {
-    return this.prisma.url.findFirst({
-      where: {
-        OR: [{ shortCode }, { customAlias: shortCode }],
-      },
+  async createWithIdentifier(
+    urlData: Prisma.UrlCreateInput,
+    identifierData: Omit<Prisma.IdentifierCreateInput, 'url'>,
+  ): Promise<{ url: Url; identifier: unknown }> {
+    return this.prisma.$transaction(async (tx) => {
+      const url = await tx.url.create({ data: urlData });
+      const identifier = await tx.identifier.create({
+        data: {
+          ...identifierData,
+          url: { connect: { id: url.id } },
+        },
+      });
+      return { url, identifier };
     });
   }
 }

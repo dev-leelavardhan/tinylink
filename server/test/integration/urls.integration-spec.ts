@@ -1,8 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 
 import configuration from '../../src/config/configuration';
+import { MetricsModule } from '../../src/metrics/metrics.module';
 import { PrismaModule } from '../../src/prisma/prisma.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { RedisModule } from '../../src/redis/redis.module';
@@ -24,7 +26,9 @@ describe('UrlsService (integration)', () => {
           cache: true,
           load: [configuration],
         }),
+        ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
         LoggerModule.forRoot({ pinoHttp: { level: 'silent' } }),
+        MetricsModule,
         PrismaModule,
         RedisModule,
         ShortCodeModule,
@@ -47,7 +51,7 @@ describe('UrlsService (integration)', () => {
     await moduleRef.close();
   });
 
-  it('persists and reuses URLs for the same original URL and strategy', async () => {
+  it('persists and reuses URLs for the same original URL', async () => {
     const dto = { originalUrl: 'https://integration.example/one' };
 
     const created = await urlsService.create(dto);

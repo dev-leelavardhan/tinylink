@@ -11,6 +11,7 @@ import {
 import { type ClickJobData } from '../types';
 import { AnalyticsCleanupService } from '../use-cases/analytics-cleanup.service';
 import { AnalyticsClickService } from '../use-cases/analytics-click.service';
+import { shouldRunWorkers } from '../../common/service-role/service-role.util';
 
 @Injectable()
 export class AnalyticsWorker implements OnModuleInit, OnModuleDestroy {
@@ -29,6 +30,11 @@ export class AnalyticsWorker implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleInit(): void {
+    if (!shouldRunWorkers(this.config)) {
+      this.logger.info('Analytics worker disabled for this role (web)');
+      return;
+    }
+
     this.worker = new Worker<ClickJobData>(
       ANALYTICS_CONSTANTS.QUEUE_NAME,
       async (job) => this.processJob(job),

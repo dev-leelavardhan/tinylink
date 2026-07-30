@@ -6,11 +6,24 @@ export type { RedisService } from '../../redis/service/redis.service';
 export type PrismaMock = {
   url: {
     findFirst: jest.Mock;
+    findUnique: jest.Mock;
     create: jest.Mock;
+    updateMany: jest.Mock;
   };
+  identifier: {
+    findUnique: jest.Mock;
+    findFirst: jest.Mock;
+    count: jest.Mock;
+    create: jest.Mock;
+    createMany: jest.Mock;
+    update: jest.Mock;
+    deleteMany: jest.Mock;
+  };
+  $transaction: jest.Mock;
   $queryRaw: jest.Mock;
   $queryRawUnsafe: jest.Mock;
   $executeRawUnsafe: jest.Mock;
+  $executeRaw: jest.Mock;
   $connect: jest.Mock;
   $disconnect: jest.Mock;
 };
@@ -19,11 +32,24 @@ export function createPrismaMock(): PrismaMock {
   return {
     url: {
       findFirst: jest.fn(),
+      findUnique: jest.fn(),
       create: jest.fn(),
+      updateMany: jest.fn(),
     },
+    identifier: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      count: jest.fn(),
+      create: jest.fn(),
+      createMany: jest.fn(),
+      update: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    $transaction: jest.fn(),
     $queryRaw: jest.fn(),
     $queryRawUnsafe: jest.fn(),
     $executeRawUnsafe: jest.fn(),
+    $executeRaw: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
   };

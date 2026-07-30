@@ -1,0 +1,26 @@
+# =============================================================================
+# TinyLink — Prometheus scrape config (LOCAL DEVELOPMENT).
+# Used by the `prometheus` service in docker-compose.yml.
+# =============================================================================
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  # The TinyLink API exposes Prometheus metrics at /metrics.
+  #
+  # `host.docker.internal` resolves to the Docker host, so Prometheus (in a
+  # container) can reach the app when it runs on the host via `pnpm start:dev`.
+  # If instead you run the app itself as a Compose service on this network,
+  # change the target to the service name and port, e.g. `app:3000`.
+  - job_name: tinylink
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['host.docker.internal:3000']
+        labels:
+          service: tinylink
+
+  # Prometheus scraping its own metrics (handy for sanity-checking the setup).
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

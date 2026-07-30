@@ -11,8 +11,7 @@ import { encodeBase62 } from '../utils/base62';
 export class AutoIncrementGenerator implements ShortCodeGenerator {
   constructor(private readonly counter: ShortCodeCounterService) {}
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async generate(options?: ShortCodeGenerateOptions): Promise<string> {
+  async generate(_options?: ShortCodeGenerateOptions): Promise<string> {
     const id = await this.counter.next();
     return encodeBase62(id);
   }

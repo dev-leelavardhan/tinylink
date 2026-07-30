@@ -17,16 +17,56 @@ describe('UrlRepository', () => {
     repository = module.get(UrlRepository);
   });
 
+  describe('findById', () => {
+    it('finds a URL by id', async () => {
+      const url = {
+        id: '1',
+        originalUrl: 'https://example.com',
+        normalizedUrl: 'https://example.com',
+      };
+      prisma.url.findUnique.mockResolvedValue(url);
+
+      const result = await repository.findById('1');
+
+      expect(result).toEqual(url);
+      expect(prisma.url.findUnique).toHaveBeenCalledWith({
+        where: { id: '1' },
+      });
+    });
+  });
+
+  describe('findByNormalizedUrl', () => {
+    it('finds a URL by normalizedUrl', async () => {
+      const url = {
+        id: '1',
+        originalUrl: 'https://example.com',
+        normalizedUrl: 'https://example.com',
+      };
+      prisma.url.findUnique.mockResolvedValue(url);
+
+      const result = await repository.findByNormalizedUrl(
+        'https://example.com',
+      );
+
+      expect(result).toEqual(url);
+      expect(prisma.url.findUnique).toHaveBeenCalledWith({
+        where: { normalizedUrl: 'https://example.com' },
+      });
+    });
+  });
+
   describe('create', () => {
     it('creates a URL record', async () => {
       const data = {
         originalUrl: 'https://example.com',
-        shortCode: 'abc123',
-        customAlias: null,
-        expiresAt: null,
-        strategy: 'random',
+        normalizedUrl: 'https://example.com',
       };
-      const expected = { id: '1', ...data };
+      const expected = {
+        id: '1',
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
       prisma.url.create.mockResolvedValue(expected);
 
       const result = await repository.create(data);
@@ -36,67 +76,44 @@ describe('UrlRepository', () => {
     });
   });
 
-  describe('findByAlias', () => {
-    it('finds a URL by custom alias', async () => {
-      const url = { id: '1', customAlias: 'my-alias', shortCode: 'abc' };
-      prisma.url.findFirst.mockResolvedValue(url);
-
-      const result = await repository.findByAlias('my-alias');
-
-      expect(result).toEqual(url);
-      expect(prisma.url.findFirst).toHaveBeenCalledWith({
-        where: {
-          OR: [{ customAlias: 'my-alias' }, { shortCode: 'my-alias' }],
-        },
-      });
-    });
-
-    it('returns null when no URL matches', async () => {
-      prisma.url.findFirst.mockResolvedValue(null);
-
-      const result = await repository.findByAlias('nonexistent');
-
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('findByOriginalUrlAndStrategy', () => {
-    it('finds a URL by originalUrl and strategy', async () => {
-      const url = {
-        id: '1',
+  describe('createWithIdentifier', () => {
+    it('creates a URL and its identifier in a transaction', async () => {
+      const urlData = {
         originalUrl: 'https://example.com',
-        strategy: 'random',
+        normalizedUrl: 'https://example.com',
       };
-      prisma.url.findFirst.mockResolvedValue(url);
+      const identifierData = {
+        code: 'abc123',
+        kind: 'GENERATED' as const,
+        strategy: 'RANDOM' as const,
+      };
+      const expectedUrl = {
+        id: '1',
+        ...urlData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const expectedIdentifier = { id: '2', urlId: '1', ...identifierData };
 
-      const result = await repository.findByOriginalUrlAndStrategy(
-        'https://example.com',
-        'random',
+      prisma.$transaction.mockImplementation(
+        async (fn: (tx: unknown) => Promise<unknown>) => {
+          const mockTx = {
+            url: { create: jest.fn().mockResolvedValue(expectedUrl) },
+            identifier: {
+              create: jest.fn().mockResolvedValue(expectedIdentifier),
+            },
+          };
+          return fn(mockTx);
+        },
       );
 
-      expect(result).toEqual(url);
-      expect(prisma.url.findFirst).toHaveBeenCalledWith({
-        where: {
-          originalUrl: 'https://example.com',
-          strategy: 'random',
-        },
-      });
-    });
-  });
+      const result = await repository.createWithIdentifier(
+        urlData,
+        identifierData,
+      );
 
-  describe('findByShortCodeOrAlias', () => {
-    it('finds a URL by short code', async () => {
-      const url = { id: '1', shortCode: 'abc', customAlias: null };
-      prisma.url.findFirst.mockResolvedValue(url);
-
-      const result = await repository.findByShortCodeOrAlias('abc');
-
-      expect(result).toEqual(url);
-      expect(prisma.url.findFirst).toHaveBeenCalledWith({
-        where: {
-          OR: [{ shortCode: 'abc' }, { customAlias: 'abc' }],
-        },
-      });
+      expect(result.url).toEqual(expectedUrl);
+      expect(result.identifier).toEqual(expectedIdentifier);
     });
   });
 });

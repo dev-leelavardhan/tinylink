@@ -20,14 +20,18 @@ describe('PrismaService (unit)', () => {
     expect(connectSpy).toHaveBeenCalled();
   });
 
-  it('onModuleDestroy calls $disconnect', async () => {
+  it('onModuleDestroy calls pool.end then $disconnect', async () => {
     const instance = Object.create(PrismaService.prototype) as PrismaService;
+    const poolEndSpy = jest.fn().mockResolvedValue(undefined);
     const disconnectSpy = jest.fn().mockResolvedValue(undefined);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    (instance as any).pool = { end: poolEndSpy };
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     (instance as any).$disconnect = disconnectSpy;
 
     await instance.onModuleDestroy();
 
+    expect(poolEndSpy).toHaveBeenCalled();
     expect(disconnectSpy).toHaveBeenCalled();
   });
 });

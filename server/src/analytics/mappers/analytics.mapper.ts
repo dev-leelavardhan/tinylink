@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import {
-  AnalyticsRow,
-  ClickResponse,
-  AggregatedData,
-  AggregatedResponse,
+  type AnalyticsRow,
+  type ClickResponse,
+  type AggregatedData,
+  type AggregatedResponse,
 } from './types';
 
 @Injectable()

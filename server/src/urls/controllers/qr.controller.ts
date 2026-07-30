@@ -6,10 +6,12 @@ import {
   Query,
   Res,
   StreamableFile,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 
 import { ZodValidationPipe } from '../../common/zod/common.validation';
+import { JwtAuthOptionalGuard } from '../../common/auth/jwt-auth.guard';
 import { qrQuerySchema, type QrQueryDto } from '../dto/qr-query.dto';
 import { UrlsService } from '../service/urls.service';
 
@@ -18,7 +20,8 @@ export class QrController {
   constructor(private readonly urlsService: UrlsService) {}
 
   @Get(':shortCode/qr')
-  @Header('Cache-Control', 'public, max-age=31536000, immutable')
+  @UseGuards(JwtAuthOptionalGuard)
+  @Header('Cache-Control', 'public, max-age=86400')
   async getQrCode(
     @Param('shortCode') shortCode: string,
     @Query(new ZodValidationPipe(qrQuerySchema)) query: QrQueryDto,

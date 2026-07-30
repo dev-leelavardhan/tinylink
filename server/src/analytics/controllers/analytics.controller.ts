@@ -1,6 +1,11 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 
 import { ZodValidationPipe } from '../../common/zod/common.validation';
+import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
+import {
+  CurrentUser,
+  type AuthenticatedUser,
+} from '../../common/auth/current-user.decorator';
 import {
   analyticsQuerySchema,
   paginationQuerySchema,
@@ -10,28 +15,44 @@ import {
 import { AnalyticsService } from '../service/analytics.service';
 
 @Controller('urls/:urlId/analytics')
+@UseGuards(JwtAuthGuard)
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get()
-  getAggregated(
+  async getAggregated(
     @Param('urlId') urlId: string,
     @Query(new ZodValidationPipe(analyticsQuerySchema))
     query: AnalyticsQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.analyticsService.getAggregated(urlId, query.days);
+    const identifierIds = await this.analyticsService.verifyOwnership(
+      urlId,
+      user.userId,
+    );
+    return this.analyticsService.getAggregated(
+      urlId,
+      query.days,
+      identifierIds,
+    );
   }
 
   @Get('clicks')
-  getRecentClicks(
+  async getRecentClicks(
     @Param('urlId') urlId: string,
     @Query(new ZodValidationPipe(paginationQuerySchema))
     query: PaginationQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
+    const identifierIds = await this.analyticsService.verifyOwnership(
+      urlId,
+      user.userId,
+    );
     return this.analyticsService.getRecentClicks(
       urlId,
       query.page,
       query.limit,
+      identifierIds,
     );
   }
 }

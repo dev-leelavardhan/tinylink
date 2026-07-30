@@ -12,8 +12,8 @@ export class UrlsService {
     private readonly qrService: UrlQrService,
   ) {}
 
-  create(dto: CreateUrlDto) {
-    return this.creator.create(dto);
+  create(dto: CreateUrlDto, userId?: string, ip?: string) {
+    return this.creator.create(dto, userId, ip);
   }
 
   redirect(

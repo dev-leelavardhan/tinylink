@@ -21,10 +21,10 @@ describe('AnalyticsClickService', () => {
   let service: AnalyticsClickService;
   let repository: {
     create: jest.Mock;
-    updateLastAccessedAt: jest.Mock;
   };
   let config: {
     getOrThrow: jest.Mock;
+    get: jest.Mock;
   };
   let logger: {
     setContext: jest.Mock;
@@ -37,15 +37,19 @@ describe('AnalyticsClickService', () => {
 
     repository = {
       create: jest.fn().mockResolvedValue({}),
-      updateLastAccessedAt: jest.fn().mockResolvedValue({}),
     };
 
     config = {
       getOrThrow: jest.fn().mockImplementation((key: string) => {
         if (key === 'IP_HASH_SALT') return 'test-salt';
-        if (key === 'GEOLITE2_DB_PATH') return './test.mmdb';
         return null;
       }),
+      get: jest
+        .fn()
+        .mockImplementation((key: string, defaultValue: unknown) => {
+          if (key === 'GEOLITE2_DB_PATH') return './test.mmdb';
+          return defaultValue;
+        }),
     };
 
     logger = {
@@ -95,6 +99,7 @@ describe('AnalyticsClickService', () => {
 
       const data: ClickJobData = {
         urlId: 'url-id',
+        identifierId: 'identifier-1',
         shortCode: 'abc123',
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
         referrer: 'https://example.com/page',
@@ -105,6 +110,7 @@ describe('AnalyticsClickService', () => {
 
       expect(repository.create).toHaveBeenCalledWith({
         url: { connect: { id: 'url-id' } },
+        identifier: { connect: { id: 'identifier-1' } },
         browser: 'Chrome',
         os: 'Windows',
         device: 'Desktop',
@@ -114,26 +120,12 @@ describe('AnalyticsClickService', () => {
       });
     });
 
-    it('updates lastAccessedAt after creating record', async () => {
-      await service.onModuleInit();
-
-      const data: ClickJobData = {
-        urlId: 'url-id',
-        shortCode: 'abc123',
-        userAgent: 'Mozilla/5.0 Chrome/120.0.0.0',
-        ip: '192.168.1.1',
-      };
-
-      await service.processClick(data);
-
-      expect(repository.updateLastAccessedAt).toHaveBeenCalledWith('url-id');
-    });
-
     it('handles missing IP', async () => {
       await service.onModuleInit();
 
       const data: ClickJobData = {
         urlId: 'url-id',
+        identifierId: 'identifier-1',
         shortCode: 'abc123',
         userAgent: 'Mozilla/5.0 Chrome/120.0.0.0',
       };
@@ -153,6 +145,7 @@ describe('AnalyticsClickService', () => {
 
       const data: ClickJobData = {
         urlId: 'url-id',
+        identifierId: 'identifier-1',
         shortCode: 'abc123',
         userAgent: 'Mozilla/5.0 Chrome/120.0.0.0',
         ip: '192.168.1.1',
@@ -177,6 +170,7 @@ describe('AnalyticsClickService', () => {
 
       const data: ClickJobData = {
         urlId: 'url-id',
+        identifierId: 'identifier-1',
         shortCode: 'abc123',
         userAgent: 'Mozilla/5.0 Chrome/120.0.0.0',
         ip: '192.168.1.1',
@@ -185,10 +179,9 @@ describe('AnalyticsClickService', () => {
       await service.processClick(data);
 
       expect(logger.warn).toHaveBeenCalledWith(
-        { urlId: 'url-id' },
-        'URL not found, skipping analytics recording',
+        { urlId: 'url-id', identifierId: 'identifier-1' },
+        'URL or Identifier not found, skipping analytics recording',
       );
-      expect(repository.updateLastAccessedAt).not.toHaveBeenCalled();
     });
 
     it('re-throws non-P2025 errors', async () => {
@@ -199,6 +192,7 @@ describe('AnalyticsClickService', () => {
 
       const data: ClickJobData = {
         urlId: 'url-id',
+        identifierId: 'identifier-1',
         shortCode: 'abc123',
         userAgent: 'Mozilla/5.0 Chrome/120.0.0.0',
         ip: '192.168.1.1',
@@ -223,6 +217,7 @@ describe('AnalyticsClickService', () => {
 
       const data: ClickJobData = {
         urlId: 'url-id',
+        identifierId: 'identifier-1',
         shortCode: 'abc123',
         userAgent: 'Mozilla/5.0 Chrome/120.0.0.0',
         ip: '192.168.1.1',
@@ -247,6 +242,7 @@ describe('AnalyticsClickService', () => {
 
       const data: ClickJobData = {
         urlId: 'url-id',
+        identifierId: 'identifier-1',
         shortCode: 'abc123',
         userAgent: 'Mozilla/5.0 Chrome/120.0.0.0',
         ip: '192.168.1.1',

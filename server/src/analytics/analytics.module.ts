@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 
+import { AuthModule } from '../common/auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RedisModule } from '../redis/redis.module';
+import { IdentifierRepository } from '../urls/repositories/identifier.repository';
 
 import { AnalyticsController } from './controllers/analytics.controller';
 import { AnalyticsMapper } from './mappers/analytics.mapper';
 import { AnalyticsQueue } from './queue/analytics.queue';
+import { AnalyticsQueueMetrics } from './queue/analytics-queue.metrics';
 import { AnalyticsCleanupScheduler } from './queue/analytics-cleanup.scheduler';
 import { AnalyticsRepository } from './repositories/analytics.repository';
 import { AnalyticsService } from './service/analytics.service';
@@ -15,13 +18,14 @@ import { AnalyticsReadService } from './use-cases/analytics-read.service';
 import { AnalyticsWorker } from './worker/analytics.worker';
 
 @Module({
-  imports: [PrismaModule, RedisModule],
+  imports: [AuthModule, PrismaModule, RedisModule],
 
   controllers: [AnalyticsController],
 
   providers: [
     // Infrastructure
     AnalyticsQueue,
+    AnalyticsQueueMetrics,
     AnalyticsWorker,
     AnalyticsCleanupScheduler,
 
@@ -33,6 +37,7 @@ import { AnalyticsWorker } from './worker/analytics.worker';
 
     // Persistence
     AnalyticsRepository,
+    IdentifierRepository,
 
     // Mapping
     AnalyticsMapper,

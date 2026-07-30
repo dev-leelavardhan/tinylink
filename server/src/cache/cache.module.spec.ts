@@ -3,6 +3,7 @@ import { PinoLogger } from 'nestjs-pino';
 import { CacheModule } from './cache.module';
 import { CacheService } from './service/cache.service';
 import { RedisService } from '../redis/service/redis.service';
+import { MetricsService } from '../metrics/metrics.service';
 
 describe('CacheModule', () => {
   let module: TestingModule;
@@ -24,6 +25,13 @@ describe('CacheModule', () => {
       providers: [
         CacheService,
         { provide: RedisService, useValue: mockRedis },
+        {
+          provide: MetricsService,
+          useValue: {
+            recordCacheHit: jest.fn(),
+            recordCacheMiss: jest.fn(),
+          },
+        },
         { provide: PinoLogger, useValue: mockLogger },
       ],
     }).compile();

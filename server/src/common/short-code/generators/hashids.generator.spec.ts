@@ -23,7 +23,9 @@ describe('HashidsGenerator (unit)', () => {
                 return 'test-salt-value-1234';
               return undefined;
             }),
-            get: jest.fn((key: string, defaultValue?: unknown) => defaultValue),
+            get: jest.fn(
+              (_key: string, defaultValue?: unknown) => defaultValue,
+            ),
           },
         },
         { provide: ShortCodeCounterService, useValue: counter },

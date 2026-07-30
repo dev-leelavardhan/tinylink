@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 
 export const pinoConfig: Params = {
   pinoHttp: {
+    level: process.env.LOG_LEVEL ?? 'info',
+
     genReqId: (req, res) => {
       const existing = req.headers['x-request-id'];
 
@@ -27,7 +29,15 @@ export const pinoConfig: Params = {
         : undefined,
 
     redact: {
-      paths: ['req.headers.authorization', 'req.headers.cookie'],
+      paths: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'req.body.password',
+        'req.body.newPassword',
+        'req.body.currentPassword',
+        'req.body.otp',
+        'req.body.refreshToken',
+      ],
       remove: true,
     },
   },

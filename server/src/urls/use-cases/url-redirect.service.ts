@@ -11,6 +11,7 @@ import {
   URL_REDIRECT_ERROR_MESSAGES,
 } from '../constants/url.constants';
 import { UrlRepository } from '../repositories/url.repository';
+import { IdentifierRepository } from '../repositories/identifier.repository';
 import { UrlMapper } from '../mappers/urls.mapper';
 import { UrlStateValidatorService } from '../validators/url-state-validator.service';
 import { AnalyticsQueue } from '../../analytics/queue/analytics.queue';
@@ -21,6 +22,7 @@ export class UrlRedirectService {
   constructor(
     private readonly cache: UrlCacheService,
     private readonly urlRepository: UrlRepository,
+    private readonly identifierRepository: IdentifierRepository,
     private readonly urlMapper: UrlMapper,
     private readonly validator: UrlStateValidatorService,
     private readonly logger: PinoLogger,
@@ -30,7 +32,7 @@ export class UrlRedirectService {
   }
 
   async redirect(
-    shortCode: string,
+    code: string,
     requestMeta?: {
       userAgent: string;
       referrer?: string;
@@ -38,49 +40,53 @@ export class UrlRedirectService {
     },
   ): Promise<string> {
     try {
-      const cached = await this.cache.get(shortCode);
+      const cached = await this.cache.get(code);
 
-      if (cached) {
-        this.validator.validate(cached);
+      if (cached.status === 'hit') {
+        this.validator.validate(cached.data);
 
         this.logger.info(
-          {
-            id: cached.id,
-            shortCode,
-            cached: true,
-          },
+          { id: cached.data.id, code, cached: true },
           URL_REDIRECT_LOG_MESSAGES.REDIRECT_SUCCESS,
         );
 
-        this.enqueueClick(cached.id, shortCode, requestMeta);
+        this.enqueueClick(cached.data.urlId, cached.data.id, code, requestMeta);
 
-        return cached.originalUrl;
+        return cached.data.originalUrl;
       }
 
-      const url = await this.urlRepository.findByShortCodeOrAlias(shortCode);
-
-      if (!url) {
-        await this.cache.setNegative(shortCode);
+      if (cached.status === 'negative') {
         throw new NotFoundException(URL_REDIRECT_ERROR_MESSAGES.URL_NOT_FOUND);
       }
-      this.validator.validate(url);
 
-      const cachedUrl = this.urlMapper.toCached(url);
-      await this.cache.set(shortCode, cachedUrl);
+      // Cache miss — look up via Identifier
+      const identifier =
+        await this.identifierRepository.findByIdentifierCode(code);
 
-      if (url.customAlias && url.customAlias !== shortCode) {
-        await this.cache.set(url.customAlias, cachedUrl);
+      if (!identifier || identifier.deletedAt) {
+        await this.cache.setNegative(code);
+        throw new NotFoundException(URL_REDIRECT_ERROR_MESSAGES.URL_NOT_FOUND);
       }
 
+      this.validator.validate(identifier);
+
+      const url = await this.urlRepository.findById(identifier.urlId);
+
+      if (!url) {
+        await this.cache.setNegative(code);
+        throw new NotFoundException(URL_REDIRECT_ERROR_MESSAGES.URL_NOT_FOUND);
+      }
+
+      // Cache the identifier
+      const cachedData = this.urlMapper.toCached(url, identifier);
+      await this.cache.set(code, cachedData);
+
       this.logger.info(
-        {
-          id: url.id,
-          shortCode,
-        },
+        { id: identifier.id, code },
         URL_REDIRECT_LOG_MESSAGES.REDIRECT_SUCCESS,
       );
 
-      this.enqueueClick(url.id, shortCode, requestMeta);
+      this.enqueueClick(url.id, identifier.id, code, requestMeta);
 
       return url.originalUrl;
     } catch (error: unknown) {
@@ -92,10 +98,7 @@ export class UrlRedirectService {
       }
 
       this.logger.error(
-        {
-          err: error,
-          shortCode,
-        },
+        { err: error, code },
         URL_REDIRECT_ERROR_MESSAGES.RESOLVE_FAILED,
       );
 
@@ -105,7 +108,8 @@ export class UrlRedirectService {
 
   private enqueueClick(
     urlId: string,
-    shortCode: string,
+    identifierId: string,
+    code: string,
     requestMeta?: {
       userAgent: string;
       referrer?: string;
@@ -115,13 +119,14 @@ export class UrlRedirectService {
     this.analyticsQueue
       .add('click', {
         urlId,
-        shortCode,
+        identifierId,
+        shortCode: code,
         userAgent: requestMeta?.userAgent ?? '',
         referrer: requestMeta?.referrer,
         ip: requestMeta?.ip,
       } satisfies ClickJobData)
       .catch((err: unknown) => {
-        this.logger.warn({ err, shortCode }, 'Failed to enqueue analytics');
+        this.logger.warn({ err, code }, 'Failed to enqueue analytics');
       });
   }
 }

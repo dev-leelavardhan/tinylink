@@ -6,7 +6,6 @@ import { AnalyticsRepository } from '../repositories/analytics.repository';
 describe('AnalyticsCleanupService', () => {
   let service: AnalyticsCleanupService;
   let repository: {
-    deleteExpiredUrls: jest.Mock;
     deleteOldAnalytics: jest.Mock;
   };
   let logger: {
@@ -17,8 +16,7 @@ describe('AnalyticsCleanupService', () => {
 
   beforeEach(async () => {
     repository = {
-      deleteExpiredUrls: jest.fn().mockResolvedValue({ count: 5 }),
-      deleteOldAnalytics: jest.fn().mockResolvedValue({ count: 100 }),
+      deleteOldAnalytics: jest.fn().mockResolvedValue(100),
     };
 
     logger = {
@@ -39,10 +37,9 @@ describe('AnalyticsCleanupService', () => {
   });
 
   describe('cleanup', () => {
-    it('deletes expired URLs and old analytics', async () => {
+    it('deletes old analytics', async () => {
       await service.cleanup();
 
-      expect(repository.deleteExpiredUrls).toHaveBeenCalled();
       expect(repository.deleteOldAnalytics).toHaveBeenCalledWith(
         expect.any(Date),
       );
@@ -53,10 +50,6 @@ describe('AnalyticsCleanupService', () => {
 
       expect(logger.info).toHaveBeenCalledWith('Starting analytics cleanup');
       expect(logger.info).toHaveBeenCalledWith(
-        { deletedCount: 5 },
-        'Expired URLs deleted',
-      );
-      expect(logger.info).toHaveBeenCalledWith(
         expect.objectContaining({ deletedCount: 100 }),
         'Old analytics deleted',
       );
@@ -65,7 +58,7 @@ describe('AnalyticsCleanupService', () => {
 
     it('logs and throws on error', async () => {
       const error = new Error('Database error');
-      repository.deleteExpiredUrls.mockRejectedValue(error);
+      repository.deleteOldAnalytics.mockRejectedValue(error);
 
       await expect(service.cleanup()).rejects.toThrow('Database error');
 

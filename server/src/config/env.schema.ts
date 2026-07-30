@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { SHORT_CODE_STRATEGIES } from '../common/short-code/short-code.constants';
+import { SERVICE_ROLES } from '../common/service-role/service-role.util';
 
 export const envSchema = z
   .object({
@@ -8,6 +9,23 @@ export const envSchema = z
       .default('development'),
 
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+
+    // Process role: `web` serves HTTP, `worker` runs background jobs,
+    // `all` (default) runs both in a single process.
+    SERVICE_ROLE: z.enum(SERVICE_ROLES).default('all'),
+
+    // Number of trusted reverse-proxy hops in front of the app (Express
+    // `trust proxy`). This governs how `req.ip` is derived from
+    // `X-Forwarded-For`, which every IP-based rate limit relies on. It MUST
+    // equal the real number of proxies in front of the app: too high lets
+    // clients spoof their IP (bypassing rate limits); too low breaks limits
+    // behind a load balancer. Set to 0 when the app is exposed directly.
+    TRUST_PROXY: z.coerce.number().int().min(0).default(1),
+
+    // Pino log level.
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .default('info'),
 
     DATABASE_URL: z.url(),
 
@@ -39,14 +57,56 @@ export const envSchema = z
     IP_HASH_SALT: z.string().min(16),
 
     GEOLITE2_DB_PATH: z.string().optional(),
+
+    // CORS configuration
+    CORS_ORIGIN: z.string().optional(),
+
+    // Observability (OpenTelemetry). Tracing is enabled only when an OTLP
+    // endpoint is configured.
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
+    OTEL_SERVICE_NAME: z.string().optional(),
+
+    // Mailer configuration
+    MAILER_HOST: z.string().min(1, 'MAILER_HOST is required'),
+    MAILER_PORT: z.coerce.number().int().default(587),
+    MAILER_SECURE: z.enum(['true', 'false']).default('false'),
+    MAILER_USER: z.string().min(1, 'MAILER_USER is required'),
+    MAILER_PASS: z.string().min(1, 'MAILER_PASS is required'),
+    MAILER_FROM: z.string().email('MAILER_FROM must be a valid email'),
+    MAILER_NAME: z.string().optional(),
   })
   .superRefine((env, ctx) => {
+    // Access and refresh tokens are signed with separate secrets on purpose;
+    // reusing the same value collapses that isolation to just the `type` claim.
+    if (env.JWT_ACCESS_SECRET === env.JWT_REFRESH_SECRET) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['JWT_REFRESH_SECRET'],
+        message: 'JWT_REFRESH_SECRET must be different from JWT_ACCESS_SECRET',
+      });
+    }
+
     if (env.SHORT_CODE_STRATEGY === 'hashids' && !env.SHORT_CODE_HASHIDS_SALT) {
       ctx.addIssue({
         code: 'custom',
         path: ['SHORT_CODE_HASHIDS_SALT'],
         message:
           'SHORT_CODE_HASHIDS_SALT is required when SHORT_CODE_STRATEGY=hashids',
+      });
+    }
+
+    // The snowflake worker id must be unique per replica; refuse to fall back to
+    // the shared default when the strategy is actually in use, otherwise codes
+    // can collide across instances.
+    if (
+      env.SHORT_CODE_STRATEGY === 'snowflake' &&
+      process.env.SHORT_CODE_SNOWFLAKE_WORKER_ID === undefined
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['SHORT_CODE_SNOWFLAKE_WORKER_ID'],
+        message:
+          'SHORT_CODE_SNOWFLAKE_WORKER_ID must be set explicitly and be unique per replica when SHORT_CODE_STRATEGY=snowflake',
       });
     }
   });

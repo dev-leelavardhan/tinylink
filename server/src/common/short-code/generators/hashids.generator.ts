@@ -21,8 +21,7 @@ export class HashidsGenerator implements ShortCodeGenerator {
     private readonly counter: ShortCodeCounterService,
   ) {}
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async generate(options?: ShortCodeGenerateOptions): Promise<string> {
+  async generate(_options?: ShortCodeGenerateOptions): Promise<string> {
     const id = await this.counter.next();
     return this.getHashids().encode(id);
   }

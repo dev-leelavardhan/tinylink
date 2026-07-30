@@ -12,11 +12,8 @@ describe('AnalyticsRepository', () => {
       findMany: jest.Mock;
       deleteMany: jest.Mock;
     };
-    url: {
-      update: jest.Mock;
-      deleteMany: jest.Mock;
-    };
     $queryRaw: jest.Mock;
+    $executeRaw: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -28,11 +25,8 @@ describe('AnalyticsRepository', () => {
         findMany: jest.fn(),
         deleteMany: jest.fn(),
       },
-      url: {
-        update: jest.fn(),
-        deleteMany: jest.fn(),
-      },
       $queryRaw: jest.fn(),
+      $executeRaw: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -49,6 +43,7 @@ describe('AnalyticsRepository', () => {
     it('creates an analytics record', async () => {
       const data = {
         url: { connect: { id: 'url-id' } },
+        identifier: { connect: { id: 'id-1' } },
         browser: 'Chrome',
         os: 'Windows',
         device: 'Desktop',
@@ -63,20 +58,6 @@ describe('AnalyticsRepository', () => {
 
       expect(prisma.analytics.create).toHaveBeenCalledWith({ data });
       expect(result).toEqual(expected);
-    });
-  });
-
-  describe('updateLastAccessedAt', () => {
-    it('updates the lastAccessedAt field', async () => {
-      prisma.url.update.mockResolvedValue({ id: 'url-id' });
-
-      await repository.updateLastAccessedAt('url-id');
-
-      expect(prisma.url.update).toHaveBeenCalledWith({
-        where: { id: 'url-id' },
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        data: { lastAccessedAt: expect.any(Date) },
-      });
     });
   });
 
@@ -225,35 +206,37 @@ describe('AnalyticsRepository', () => {
     });
   });
 
-  describe('deleteExpiredUrls', () => {
-    it('deletes expired URLs', async () => {
-      prisma.url.deleteMany.mockResolvedValue({ count: 5 });
-
-      const result = await repository.deleteExpiredUrls();
-
-      expect(prisma.url.deleteMany).toHaveBeenCalledWith({
-        where: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          expiresAt: { lt: expect.any(Date) },
-        },
-      });
-      expect(result.count).toBe(5);
-    });
-  });
-
   describe('deleteOldAnalytics', () => {
-    it('deletes old analytics records', async () => {
-      prisma.analytics.deleteMany.mockResolvedValue({ count: 100 });
+    it('deletes old analytics records in single batch', async () => {
+      prisma.$executeRaw.mockResolvedValue(50);
+
+      const retentionDate = new Date('2024-01-01');
+      const result = await repository.deleteOldAnalytics(retentionDate, 100);
+
+      expect(typeof result).toBe('number');
+      expect(result).toBe(50);
+      expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
+    });
+
+    it('deletes in multiple batches when more records than batch size', async () => {
+      prisma.$executeRaw
+        .mockResolvedValueOnce(100) // first batch full
+        .mockResolvedValueOnce(50); // second batch partial
+
+      const retentionDate = new Date('2024-01-01');
+      const result = await repository.deleteOldAnalytics(retentionDate, 100);
+
+      expect(result).toBe(150);
+      expect(prisma.$executeRaw).toHaveBeenCalledTimes(2);
+    });
+
+    it('uses default batch size when not specified', async () => {
+      prisma.$executeRaw.mockResolvedValue(5000);
 
       const retentionDate = new Date('2024-01-01');
       const result = await repository.deleteOldAnalytics(retentionDate);
 
-      expect(prisma.analytics.deleteMany).toHaveBeenCalledWith({
-        where: {
-          timestamp: { lt: retentionDate },
-        },
-      });
-      expect(result.count).toBe(100);
+      expect(result).toBe(5000);
     });
   });
 });

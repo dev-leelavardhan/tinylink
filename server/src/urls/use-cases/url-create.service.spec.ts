@@ -1,4 +1,7 @@
-import { InternalServerErrorException } from '@nestjs/common';
+import {
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { PinoLogger } from 'nestjs-pino';
@@ -8,10 +11,12 @@ import { ShortCodeGeneratorService } from '../../common/short-code/short-code-ge
 import { UrlCacheService } from '../service/urls-cache.service';
 import { AliasValidatorService } from '../validators/alias-validator.service';
 import { UrlRepository } from '../repositories/url.repository';
+import { IdentifierRepository } from '../repositories/identifier.repository';
 import { UrlMapper } from '../mappers/urls.mapper';
+import { RedisService } from '../../redis/service/redis.service';
 import { createLoggerMock } from '../../testing/mocks';
 import { CreateUrlDto } from '../dto/create-url.dto';
-import { type Url } from '../types';
+import { type Identifier, type Url } from '@prisma/client';
 
 describe('UrlCreateService', () => {
   let service: UrlCreateService;
@@ -30,14 +35,23 @@ describe('UrlCreateService', () => {
     set: jest.fn().mockResolvedValue(undefined),
     setNegative: jest.fn(),
     invalidate: jest.fn(),
-    invalidateAll: jest.fn(),
   };
 
-  const repository = {
+  const urlRepository = {
+    findById: jest.fn(),
+    findByNormalizedUrl: jest.fn(),
     create: jest.fn(),
-    findByAlias: jest.fn(),
-    findByOriginalUrlAndStrategy: jest.fn(),
-    findByShortCodeOrAlias: jest.fn(),
+    createWithIdentifier: jest.fn(),
+  };
+
+  const identifierRepository = {
+    findByIdentifierCode: jest.fn(),
+    findByUrlAndOwner: jest.fn(),
+    findByUrlAndGuestGenerated: jest.fn(),
+    existsByCode: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    deleteByUrlId: jest.fn(),
   };
 
   const mapper = {
@@ -45,27 +59,66 @@ describe('UrlCreateService', () => {
     toCached: jest.fn(),
   };
 
+  const redis = {
+    multi: jest.fn(),
+  };
+
   const logger = createLoggerMock();
+
+  const sampleUrl: Url = {
+    id: 'url-1',
+    originalUrl: 'https://example.com',
+    normalizedUrl: 'https://example.com',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const sampleIdentifier: Identifier = {
+    id: 'id-1',
+    code: 'gen123',
+    kind: 'GENERATED',
+    strategy: 'RANDOM',
+    urlId: 'url-1',
+    ownerId: null,
+    expiresAt: null,
+    disabled: false,
+    deletedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     shortCodeGenerator.getStrategy.mockReturnValue('random');
     shortCodeGenerator.generate.mockResolvedValue('gen123');
     aliasValidator.validate.mockResolvedValue('validated-alias');
-    mapper.toResponse.mockImplementation((url: Url) => ({
+    mapper.toResponse.mockImplementation(
+      (url: Url, identifier: Identifier) => ({
+        id: identifier.id,
+        originalUrl: url.originalUrl,
+        shortCode: identifier.code,
+        shortUrl: `http://localhost:3000/${identifier.code}`,
+      }),
+    );
+    mapper.toCached.mockImplementation((url: Url, identifier: Identifier) => ({
+      id: identifier.id,
+      urlId: url.id,
       originalUrl: url.originalUrl,
-      shortCode: url.shortCode,
-      shortUrl: `http://localhost:3000/${url.shortCode}`,
+      code: identifier.code,
+      kind: identifier.kind,
+      ownerId: identifier.ownerId,
+      strategy: identifier.strategy,
+      expiresAt: identifier.expiresAt?.toISOString() ?? null,
+      disabled: identifier.disabled,
+      deletedAt: identifier.deletedAt?.toISOString() ?? null,
     }));
-    mapper.toCached.mockImplementation((url: Url) => ({
-      id: url.id,
-      originalUrl: url.originalUrl,
-      shortCode: url.shortCode,
-      customAlias: url.customAlias,
-      disabled: url.disabled,
-      expiresAt: url.expiresAt?.toISOString() ?? null,
-      lastAccessedAt: new Date().toISOString(),
-    }));
+
+    const mockMulti = {
+      incr: jest.fn().mockReturnThis(),
+      expire: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([[null, 1]]),
+    };
+    redis.multi.mockReturnValue(mockMulti);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -73,8 +126,10 @@ describe('UrlCreateService', () => {
         { provide: ShortCodeGeneratorService, useValue: shortCodeGenerator },
         { provide: AliasValidatorService, useValue: aliasValidator },
         { provide: UrlCacheService, useValue: cache },
-        { provide: UrlRepository, useValue: repository },
+        { provide: UrlRepository, useValue: urlRepository },
+        { provide: IdentifierRepository, useValue: identifierRepository },
         { provide: UrlMapper, useValue: mapper },
+        { provide: RedisService, useValue: redis },
         { provide: PinoLogger, useValue: logger },
       ],
     }).compile();
@@ -85,44 +140,43 @@ describe('UrlCreateService', () => {
   describe('create', () => {
     const dto: CreateUrlDto = { originalUrl: 'https://example.com' };
 
-    it('returns existing URL when one already exists for the same originalUrl+strategy', async () => {
-      const existing = {
-        id: 'existing',
-        originalUrl: 'https://example.com',
-        shortCode: 'existing',
-      };
-      repository.findByOriginalUrlAndStrategy.mockResolvedValue(existing);
+    it('returns existing identifier when one already exists for the same URL+owner', async () => {
+      urlRepository.findByNormalizedUrl.mockResolvedValue(sampleUrl);
+      identifierRepository.findByUrlAndGuestGenerated.mockResolvedValue(
+        sampleIdentifier,
+      );
 
       const result = await service.create(dto);
 
-      expect(result).toEqual(mapper.toResponse(existing));
-      expect(repository.create).not.toHaveBeenCalled();
+      expect(result).toEqual(mapper.toResponse(sampleUrl, sampleIdentifier));
+      expect(identifierRepository.create).not.toHaveBeenCalled();
     });
 
-    it('creates a new URL with generated short code', async () => {
-      repository.findByOriginalUrlAndStrategy.mockResolvedValue(null);
-      const created = {
-        id: '1',
-        originalUrl: 'https://example.com',
-        shortCode: 'gen123',
-        strategy: 'random',
-        disabled: false,
-        expiresAt: null,
-        customAlias: null,
-      };
-      repository.create.mockResolvedValue(created);
+    it('creates a new URL and identifier with generated short code', async () => {
+      urlRepository.findByNormalizedUrl.mockResolvedValue(sampleUrl);
+      identifierRepository.findByUrlAndGuestGenerated.mockResolvedValue(null);
+      identifierRepository.create.mockResolvedValue(sampleIdentifier);
 
       const result = await service.create(dto);
 
-      expect(repository.create).toHaveBeenCalledWith({
-        originalUrl: 'https://example.com',
-        shortCode: 'gen123',
-        customAlias: undefined,
-        expiresAt: undefined,
-        strategy: 'random',
-      });
+      expect(urlRepository.create).not.toHaveBeenCalled();
+      expect(identifierRepository.create).toHaveBeenCalled();
       expect(cache.set).toHaveBeenCalledWith('gen123', expect.any(Object));
-      expect(result).toEqual(mapper.toResponse(created));
+      expect(result).toEqual(mapper.toResponse(sampleUrl, sampleIdentifier));
+    });
+
+    it('creates URL record when normalizedUrl not found', async () => {
+      urlRepository.findByNormalizedUrl.mockResolvedValue(null);
+      urlRepository.create.mockResolvedValue(sampleUrl);
+      identifierRepository.create.mockResolvedValue(sampleIdentifier);
+
+      await service.create(dto);
+
+      expect(urlRepository.create).toHaveBeenCalledWith({
+        originalUrl: 'https://example.com',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        normalizedUrl: expect.any(String),
+      });
     });
 
     it('validates custom alias when provided', async () => {
@@ -130,31 +184,28 @@ describe('UrlCreateService', () => {
         originalUrl: 'https://example.com',
         customAlias: 'My-Alias',
       };
-      repository.findByOriginalUrlAndStrategy.mockResolvedValue(null);
-      const created = {
-        id: '2',
-        originalUrl: 'https://example.com',
-        shortCode: 'validated-alias',
-        strategy: 'random',
-        disabled: false,
-        expiresAt: null,
-        customAlias: 'validated-alias',
+      urlRepository.findByNormalizedUrl.mockResolvedValue(sampleUrl);
+      const aliasIdentifier = {
+        ...sampleIdentifier,
+        code: 'validated-alias',
+        kind: 'CUSTOM_ALIAS' as const,
       };
-      repository.create.mockResolvedValue(created);
+      identifierRepository.create.mockResolvedValue(aliasIdentifier);
 
       await service.create(aliasDto);
 
       expect(aliasValidator.validate).toHaveBeenCalledWith('My-Alias');
-      expect(repository.create).toHaveBeenCalledWith(
+      expect(identifierRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          shortCode: 'validated-alias',
-          customAlias: 'validated-alias',
+          code: 'validated-alias',
+          kind: 'CUSTOM_ALIAS',
         }),
       );
     });
 
-    it('retries on P2002 shortCode collision', async () => {
-      repository.findByOriginalUrlAndStrategy.mockResolvedValue(null);
+    it('retries on P2002 code collision', async () => {
+      urlRepository.findByNormalizedUrl.mockResolvedValue(sampleUrl);
+      identifierRepository.findByUrlAndGuestGenerated.mockResolvedValue(null);
       shortCodeGenerator.generate
         .mockResolvedValueOnce('collision')
         .mockResolvedValueOnce('unique');
@@ -162,92 +213,44 @@ describe('UrlCreateService', () => {
       const collisionError = new PrismaClientKnownRequestError('collision', {
         code: 'P2002',
         clientVersion: '7.8.0',
-        meta: { target: ['shortCode'] },
+        meta: { target: ['code'] },
       });
 
-      const created = {
-        id: '3',
-        originalUrl: 'https://example.com',
-        shortCode: 'unique',
-        strategy: 'random',
-        disabled: false,
-        expiresAt: null,
-        customAlias: null,
-      };
-      repository.create
+      const uniqueIdentifier = { ...sampleIdentifier, code: 'unique' };
+      identifierRepository.create
         .mockRejectedValueOnce(collisionError)
-        .mockResolvedValueOnce(created);
+        .mockResolvedValueOnce(uniqueIdentifier);
 
       const result = await service.create(dto);
 
       expect(shortCodeGenerator.generate).toHaveBeenCalledTimes(2);
-      expect(result).toEqual(mapper.toResponse(created));
+      expect(result).toEqual(mapper.toResponse(sampleUrl, uniqueIdentifier));
     });
 
-    it('returns concurrent URL on P2002 originalUrl+strategy collision', async () => {
-      repository.findByOriginalUrlAndStrategy
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          id: 'concurrent',
-          originalUrl: 'https://example.com',
-          shortCode: 'con1',
-        });
+    it('throws ConflictException on P2002 for custom alias collision', async () => {
+      const aliasDto: CreateUrlDto = {
+        originalUrl: 'https://example.com',
+        customAlias: 'taken-alias',
+      };
+      urlRepository.findByNormalizedUrl.mockResolvedValue(sampleUrl);
+      aliasValidator.validate.mockResolvedValue('taken-alias');
 
       const collisionError = new PrismaClientKnownRequestError('collision', {
         code: 'P2002',
         clientVersion: '7.8.0',
-        meta: { target: ['originalUrl', 'strategy'] },
+        meta: { target: ['code'] },
       });
+      identifierRepository.create.mockRejectedValue(collisionError);
 
-      repository.create.mockRejectedValueOnce(collisionError);
-
-      const result = await service.create(dto);
-
-      expect(result).toEqual(
-        mapper.toResponse({
-          id: 'concurrent',
-          originalUrl: 'https://example.com',
-          shortCode: 'con1',
-        }),
+      await expect(service.create(aliasDto)).rejects.toBeInstanceOf(
+        ConflictException,
       );
     });
 
-    it('retries when concurrent lookup returns null after P2002 originalUrl+strategy', async () => {
-      repository.findByOriginalUrlAndStrategy
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(null);
-
-      const collisionError = new PrismaClientKnownRequestError('collision', {
-        code: 'P2002',
-        clientVersion: '7.8.0',
-        meta: { target: ['originalUrl', 'strategy'] },
-      });
-
-      shortCodeGenerator.generate
-        .mockResolvedValueOnce('abc1234')
-        .mockResolvedValueOnce('retry99');
-
-      const created = {
-        id: '4',
-        originalUrl: 'https://example.com',
-        shortCode: 'retry99',
-        strategy: 'random',
-        disabled: false,
-        expiresAt: null,
-        customAlias: null,
-      };
-      repository.create
-        .mockRejectedValueOnce(collisionError)
-        .mockResolvedValueOnce(created);
-
-      const result = await service.create(dto);
-
-      expect(result).toEqual(mapper.toResponse(created));
-    });
-
     it('throws InternalServerErrorException for non-P2002 errors', async () => {
-      repository.findByOriginalUrlAndStrategy.mockResolvedValue(null);
-      repository.create.mockRejectedValue(new Error('db crash'));
+      urlRepository.findByNormalizedUrl.mockResolvedValue(sampleUrl);
+      identifierRepository.findByUrlAndGuestGenerated.mockResolvedValue(null);
+      identifierRepository.create.mockRejectedValue(new Error('db crash'));
 
       await expect(service.create(dto)).rejects.toBeInstanceOf(
         InternalServerErrorException,
@@ -255,15 +258,16 @@ describe('UrlCreateService', () => {
     });
 
     it('throws after exhausting max retries', async () => {
-      repository.findByOriginalUrlAndStrategy.mockResolvedValue(null);
+      urlRepository.findByNormalizedUrl.mockResolvedValue(sampleUrl);
+      identifierRepository.findByUrlAndGuestGenerated.mockResolvedValue(null);
 
       const collisionError = new PrismaClientKnownRequestError('collision', {
         code: 'P2002',
         clientVersion: '7.8.0',
-        meta: { target: ['shortCode'] },
+        meta: { target: ['code'] },
       });
 
-      repository.create.mockRejectedValue(collisionError);
+      identifierRepository.create.mockRejectedValue(collisionError);
       shortCodeGenerator.generate.mockResolvedValue('colliding');
 
       await expect(service.create(dto)).rejects.toThrow(

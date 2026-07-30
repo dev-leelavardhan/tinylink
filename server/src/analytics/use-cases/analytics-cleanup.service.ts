@@ -18,30 +18,19 @@ export class AnalyticsCleanupService {
     this.logger.info('Starting analytics cleanup');
 
     try {
-      const deletedUrls = await this.repository.deleteExpiredUrls();
-
-      this.logger.info(
-        { deletedCount: deletedUrls.count },
-        'Expired URLs deleted',
-      );
-
       const retentionDate = daysAgo(ANALYTICS_CONSTANTS.DEFAULT_RETENTION_DAYS);
 
-      const deletedAnalytics =
+      const deletedCount =
         await this.repository.deleteOldAnalytics(retentionDate);
 
       this.logger.info(
-        {
-          deletedCount: deletedAnalytics.count,
-          retentionDate,
-        },
+        { deletedCount, retentionDate },
         'Old analytics deleted',
       );
 
       this.logger.info('Analytics cleanup completed');
     } catch (err: unknown) {
       this.logger.error({ err }, 'Analytics cleanup failed');
-
       throw err;
     }
   }

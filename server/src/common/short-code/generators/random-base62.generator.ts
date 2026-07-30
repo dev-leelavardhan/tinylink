@@ -22,8 +22,7 @@ export class RandomBase62Generator implements ShortCodeGenerator {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  generate(options?: ShortCodeGenerateOptions): string {
+  generate(_options?: ShortCodeGenerateOptions): string {
     const { RANDOM_BASE, RANDOM_BASE_LENGTH } = RANDOM_BASE_CONSTANTS;
 
     return Array.from(

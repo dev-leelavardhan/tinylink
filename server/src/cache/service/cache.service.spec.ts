@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CacheService } from './cache.service';
 import { RedisService } from '../../redis/service/redis.service';
+import { MetricsService } from '../../metrics/metrics.service';
 import { CACHE_CONSTANTS } from '../constants/cache.constants';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -37,6 +38,13 @@ describe('CacheService', () => {
         CacheService,
         { provide: RedisService, useValue: redis },
         {
+          provide: MetricsService,
+          useValue: {
+            recordCacheHit: jest.fn(),
+            recordCacheMiss: jest.fn(),
+          },
+        },
+        {
           provide: PinoLogger,
           useValue: logger,
         },
@@ -51,26 +59,26 @@ describe('CacheService', () => {
   });
 
   describe('get', () => {
-    it('should return null on cache miss', async () => {
+    it('should return miss on cache miss', async () => {
       redis.get.mockResolvedValue(null);
 
       const result = await service.get('test-code');
 
-      expect(result).toBeNull();
+      expect(result).toEqual({ status: 'miss' });
       expect(redis.get).toHaveBeenCalledWith(
         `${CACHE_CONSTANTS.KEY_PREFIX}test-code`,
       );
     });
 
-    it('should return null on negative cache hit', async () => {
+    it('should return negative on negative cache hit', async () => {
       redis.get.mockResolvedValue(CACHE_CONSTANTS.NEGATIVE_SENTINEL);
 
       const result = await service.get('test-code');
 
-      expect(result).toBeNull();
+      expect(result).toEqual({ status: 'negative' });
     });
 
-    it('should return parsed CachedUrl on cache hit', async () => {
+    it('should return hit with parsed CachedUrl on cache hit', async () => {
       const cachedData = {
         id: '1',
         originalUrl: 'https://example.com',
@@ -84,23 +92,23 @@ describe('CacheService', () => {
 
       const result = await service.get('test-code');
 
-      expect(result).toEqual(cachedData);
+      expect(result).toEqual({ status: 'hit', data: cachedData });
     });
 
-    it('should return null on parse error', async () => {
+    it('should return miss on parse error', async () => {
       redis.get.mockResolvedValue('invalid-json');
 
       const result = await service.get('test-code');
 
-      expect(result).toBeNull();
+      expect(result).toEqual({ status: 'miss' });
     });
 
-    it('should return null on Redis error', async () => {
+    it('should return miss on Redis error', async () => {
       redis.get.mockRejectedValue(new Error('Redis connection failed'));
 
       const result = await service.get('test-code');
 
-      expect(result).toBeNull();
+      expect(result).toEqual({ status: 'miss' });
       expect(logger.warn).toHaveBeenCalled();
     });
   });
@@ -111,12 +119,15 @@ describe('CacheService', () => {
 
       const data = {
         id: '1',
+        urlId: 'url-1',
         originalUrl: 'https://example.com',
-        shortCode: 'test-code',
-        customAlias: null,
+        code: 'test-code',
+        kind: 'GENERATED' as const,
+        ownerId: null,
+        strategy: 'RANDOM' as const,
         disabled: false,
         expiresAt: null,
-        lastAccessedAt: null,
+        deletedAt: null,
       };
 
       await service.set('test-code', data);
@@ -133,12 +144,15 @@ describe('CacheService', () => {
 
       const data = {
         id: '1',
+        urlId: 'url-1',
         originalUrl: 'https://example.com',
-        shortCode: 'test-code',
-        customAlias: null,
+        code: 'test-code',
+        kind: 'GENERATED' as const,
+        ownerId: null,
+        strategy: 'RANDOM' as const,
         disabled: false,
         expiresAt: null,
-        lastAccessedAt: null,
+        deletedAt: null,
       };
 
       await service.set('test-code', data);
@@ -166,58 +180,6 @@ describe('CacheService', () => {
       await service.setNegative('test-code');
 
       expect(logger.warn).toHaveBeenCalled();
-    });
-  });
-
-  describe('invalidate', () => {
-    it('should delete cache entry', async () => {
-      redis.del.mockResolvedValue(1);
-
-      await service.invalidate('test-code');
-
-      expect(redis.del).toHaveBeenCalledWith(
-        `${CACHE_CONSTANTS.KEY_PREFIX}test-code`,
-      );
-    });
-
-    it('should handle Redis error gracefully', async () => {
-      redis.del.mockRejectedValue(new Error('Redis connection failed'));
-
-      await service.invalidate('test-code');
-
-      expect(logger.warn).toHaveBeenCalled();
-    });
-  });
-
-  describe('invalidateAll', () => {
-    it('should invalidate both shortCode and customAlias', async () => {
-      redis.del.mockResolvedValue(1);
-
-      await service.invalidateAll('test-code', 'custom-alias');
-
-      expect(redis.del).toHaveBeenCalledTimes(2);
-      expect(redis.del).toHaveBeenCalledWith(
-        `${CACHE_CONSTANTS.KEY_PREFIX}test-code`,
-      );
-      expect(redis.del).toHaveBeenCalledWith(
-        `${CACHE_CONSTANTS.KEY_PREFIX}custom-alias`,
-      );
-    });
-
-    it('should only invalidate shortCode when customAlias is null', async () => {
-      redis.del.mockResolvedValue(1);
-
-      await service.invalidateAll('test-code', null);
-
-      expect(redis.del).toHaveBeenCalledTimes(1);
-    });
-
-    it('should only invalidate shortCode when customAlias equals shortCode', async () => {
-      redis.del.mockResolvedValue(1);
-
-      await service.invalidateAll('test-code', 'test-code');
-
-      expect(redis.del).toHaveBeenCalledTimes(1);
     });
   });
 });

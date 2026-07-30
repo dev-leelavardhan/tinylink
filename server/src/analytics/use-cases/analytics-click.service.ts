@@ -24,7 +24,7 @@ export class AnalyticsClickService implements OnModuleInit {
     this.logger.setContext(AnalyticsClickService.name);
 
     this.ipSalt = this.config.getOrThrow<string>('IP_HASH_SALT');
-    this.geoLiteDbPath = this.config.getOrThrow<string>('GEOLITE2_DB_PATH');
+    this.geoLiteDbPath = this.config.get<string>('GEOLITE2_DB_PATH', '');
   }
 
   async onModuleInit(): Promise<void> {
@@ -45,7 +45,7 @@ export class AnalyticsClickService implements OnModuleInit {
   }
 
   async processClick(data: ClickJobData): Promise<void> {
-    const { urlId, userAgent, referrer, ip } = data;
+    const { urlId, identifierId, userAgent, referrer, ip } = data;
 
     const { browser, os, device } = parseUserAgent(userAgent);
     const ipHash = hashIp(ip, this.ipSalt);
@@ -54,6 +54,7 @@ export class AnalyticsClickService implements OnModuleInit {
     try {
       await this.repository.create({
         url: { connect: { id: urlId } },
+        identifier: { connect: { id: identifierId } },
         browser,
         os,
         device,
@@ -61,13 +62,11 @@ export class AnalyticsClickService implements OnModuleInit {
         ipHash,
         referrer: normalizeReferrer(referrer),
       });
-
-      await this.repository.updateLastAccessedAt(urlId);
     } catch (err: unknown) {
       if (err instanceof Error && 'code' in err && err.code === 'P2025') {
         this.logger.warn(
-          { urlId },
-          'URL not found, skipping analytics recording',
+          { urlId, identifierId },
+          'URL or Identifier not found, skipping analytics recording',
         );
         return;
       }
@@ -85,7 +84,7 @@ export class AnalyticsClickService implements OnModuleInit {
 
       return result?.country?.iso_code ?? null;
     } catch (err: unknown) {
-      this.logger.warn({ err, ip }, 'Failed to resolve country');
+      this.logger.warn({ err }, 'Failed to resolve country from GeoIP');
       return null;
     }
   }

@@ -1,33 +1,37 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { type CachedUrl } from '../../cache/types';
-import { type CreateUrlResponseDto, type Url } from '../types';
+import { type Identifier, type Url } from '@prisma/client';
+import { type CachedIdentifier } from '../../cache/types';
+import { type CreateUrlResponseDto } from '../types';
 
 @Injectable()
 export class UrlMapper {
   constructor(private readonly config: ConfigService) {}
 
-  toResponse(url: Url): CreateUrlResponseDto {
+  toResponse(url: Url, identifier: Identifier): CreateUrlResponseDto {
     return {
-      id: url.id,
+      id: identifier.id,
       originalUrl: url.originalUrl,
-      shortCode: url.shortCode,
+      shortCode: identifier.code,
       shortUrl: new URL(
-        url.shortCode,
+        identifier.code,
         this.config.getOrThrow('BASE_URL'),
       ).toString(),
     };
   }
 
-  toCached(url: Url): CachedUrl {
+  toCached(url: Url, identifier: Identifier): CachedIdentifier {
     return {
-      id: url.id,
+      id: identifier.id,
+      urlId: url.id,
       originalUrl: url.originalUrl,
-      shortCode: url.shortCode,
-      customAlias: url.customAlias,
-      disabled: url.disabled,
-      expiresAt: url.expiresAt?.toISOString() ?? null,
-      lastAccessedAt: new Date().toISOString(),
+      code: identifier.code,
+      kind: identifier.kind,
+      ownerId: identifier.ownerId,
+      strategy: identifier.strategy,
+      expiresAt: identifier.expiresAt?.toISOString() ?? null,
+      disabled: identifier.disabled,
+      deletedAt: identifier.deletedAt?.toISOString() ?? null,
     };
   }
 }

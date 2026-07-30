@@ -19,6 +19,10 @@ describe('configuration (unit)', () => {
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
     process.env.BASE_URL = 'http://localhost:3000';
     process.env.IP_HASH_SALT = 'a'.repeat(16);
+    process.env.MAILER_HOST = 'smtp.example.com';
+    process.env.MAILER_USER = 'user';
+    process.env.MAILER_PASS = 'pass';
+    process.env.MAILER_FROM = 'noreply@example.com';
 
     const result = configuration();
 

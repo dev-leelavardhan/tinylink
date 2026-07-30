@@ -46,10 +46,14 @@ describe('UrlsService (unit)', () => {
 
       mockCreator.create.mockResolvedValue(expectedResult);
 
-      const result = await service.create(dto);
+      const result = await service.create(dto, 'user-1', '127.0.0.1');
 
       expect(result).toEqual(expectedResult);
-      expect(mockCreator.create).toHaveBeenCalledWith(dto);
+      expect(mockCreator.create).toHaveBeenCalledWith(
+        dto,
+        'user-1',
+        '127.0.0.1',
+      );
     });
   });
 
