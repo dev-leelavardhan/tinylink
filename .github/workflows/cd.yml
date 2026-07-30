@@ -76,7 +76,7 @@ jobs:
 
       # Fail the build on HIGH/CRITICAL image vulnerabilities.
       - name: Scan app image (Trivy)
-        uses: aquasecurity/trivy-action@0.28.0 # TODO: pin to commit SHA
+        uses: aquasecurity/trivy-action@v0.36.0 # TODO: pin to commit SHA
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           format: table
