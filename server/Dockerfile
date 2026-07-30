@@ -7,37 +7,31 @@ RUN corepack enable && corepack prepare pnpm@11.10.0 --activate
 
 WORKDIR /app
 
-# ---------------------------------------------------------------------------
-# Full dependencies (dev + prod) — used for building and for the migrator image.
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Install all dependencies (including dev dependencies)
+# -----------------------------------------------------------------------------
 FROM base AS deps
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile --ignore-scripts
 
-# ---------------------------------------------------------------------------
-# Production-only dependencies — used for the slim runtime image.
-# ---------------------------------------------------------------------------
-FROM base AS prod-deps
+RUN pnpm install --frozen-lockfile
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --prod --frozen-lockfile --ignore-scripts
+# -----------------------------------------------------------------------------
+# Build application
+# -----------------------------------------------------------------------------
+FROM deps AS build
 
-# ---------------------------------------------------------------------------
-# Build the application and generate the Prisma client.
-# ---------------------------------------------------------------------------
-FROM base AS build
-
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 RUN pnpm prisma:generate
 RUN pnpm build
 
-# ---------------------------------------------------------------------------
-# Migrator image — carries the Prisma CLI + schema + migrations only.
-# The one-shot `migrate` service runs `prisma migrate deploy` from this image.
-# ---------------------------------------------------------------------------
+# Remove dev dependencies for the runtime image.
+RUN pnpm prune --prod
+
+# -----------------------------------------------------------------------------
+# Migrator image
+# -----------------------------------------------------------------------------
 FROM base AS migrator
 
 ENV NODE_ENV=production
@@ -56,24 +50,31 @@ USER node
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["pnpm", "prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"]
 
-# ---------------------------------------------------------------------------
-# Slim production runtime — prod deps + generated client + compiled app only.
-# ---------------------------------------------------------------------------
-FROM base AS production
+# -----------------------------------------------------------------------------
+# Production image
+# -----------------------------------------------------------------------------
+FROM node:24-alpine AS production
 
 ENV NODE_ENV=production
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 
 RUN apk add --no-cache tini wget
 
+RUN corepack enable && corepack prepare pnpm@11.10.0 --activate
+
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY --from=prod-deps /app/node_modules ./node_modules
-# Overlay the generated Prisma client (produced during build) onto prod deps.
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build /app/package.json ./
+COPY --from=build /app/pnpm-lock.yaml ./
+COPY --from=build /app/pnpm-workspace.yaml ./
+
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
+
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+
+RUN chmod +x ./docker-entrypoint.sh
 
 USER node
 
@@ -83,4 +84,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://localhost:3000/health/ready || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["/app/docker-entrypoint.sh"]
+CMD ["./docker-entrypoint.sh"]
