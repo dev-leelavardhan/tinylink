@@ -1,16 +1,14 @@
-import { z } from 'zod';
 import { envSchema } from './env.schema';
+import { z } from 'zod';
 
-const configuration = () => {
-  const result = envSchema.safeParse(process.env);
+export default () => {
+  const parsed = envSchema.safeParse(process.env);
 
-  if (!result.success) {
+  if (!parsed.success) {
     throw new Error(
-      `Environment validation failed\n\n${z.prettifyError(result.error)}`,
+      `Environment validation failed\n\n${z.prettifyError(parsed.error)}`,
     );
   }
 
-  return result.data;
+  return parsed.data;
 };
-
-export default configuration;

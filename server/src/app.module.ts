@@ -25,6 +25,9 @@ import { UsersModule } from './users/users.module';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      expandVariables: true,
+      envFilePath:
+        process.env.NODE_ENV === 'test' ? '.env.test' : ['.env.local', '.env'],
       load: [configuration],
     }),
     ThrottlerModule.forRootAsync({

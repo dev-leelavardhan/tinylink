@@ -1,4 +1,4 @@
-import 'dotenv/config';
+// import 'dotenv/config'; needed only this for the dev env
 // Tracing must be imported before any instrumented module is loaded.
 import './tracing';
 import { NestFactory } from '@nestjs/core';
